@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>REX</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="rive-canvas" width="402" height="874"></canvas>
+
+    <div id="controls">
+      <section>
+        <h3>Image</h3>
+        <select id="asset-select"><option value="">— no assets yet —</option></select>
+        <input type="file" id="file-input" accept="image/*" />
+      </section>
+
+      <section id="triggers-section">
+        <h3>Triggers</h3>
+        <div id="triggers">
+          <button id="btn-load-complete">Loading complete</button>
+          <button id="btn-shake-pack3">Shake hero Pack</button>
+          <button id="btn-shake-pack2-4">Shake side packs</button>
+        </div>
+      </section>
+
+      <section id="booleans-section">
+        <h3>Booleans</h3>
+        <div id="booleans">
+          <div class="bool-row">
+            <label for="toggle-audio">Audio</label>
+            <label class="toggle">
+              <input type="checkbox" id="toggle-audio" checked />
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/@rive-app/webgl2@latest"></script>
+  <script src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E '^[A-Za-z][a-zA-Z0-9_/ -]{2,40}$')",
+      "WebFetch(domain:rive.app)",
+      "WebSearch",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(curl -s https://raw.githubusercontent.com/rive-app/rive-wasm/master/js/src/rive.ts)",
+      "Read(//tmp/**)"
+    ]
+  }
+}
