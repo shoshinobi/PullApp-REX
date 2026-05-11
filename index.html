@@ -8,13 +8,23 @@
 </head>
 <body>
   <div id="app">
-    <canvas id="rive-canvas" width="402" height="874"></canvas>
+    <canvas id="rive-canvas"></canvas>
 
     <div id="controls">
+      <button id="sidebar-toggle" aria-label="Toggle sidebar">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4.5 2L8 6L4.5 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div id="controls-inner">
       <section>
-        <h3>Image</h3>
-        <select id="asset-select"><option value="">— no assets yet —</option></select>
-        <input type="file" id="file-input" accept="image/*" />
+        <h3>Images</h3>
+        <label class="img-label">Pack</label>
+        <select id="pack-select"><option value="">— pick a pack —</option></select>
+        <input type="file" id="pack-file-input" accept="image/*" />
+        <label class="img-label">Card</label>
+        <select id="card-select"><option value="">— pick a card —</option></select>
+        <input type="file" id="card-file-input" accept="image/*" />
       </section>
 
       <section id="triggers-section">
@@ -38,6 +48,7 @@
           </div>
         </div>
       </section>
+      </div>
     </div>
   </div>
 

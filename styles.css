@@ -1,10 +1,5 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-:root {
-  --canvas-height: calc(100vh - 40px);
-  --canvas-width: calc(var(--canvas-height) * 390 / 844);
-}
-
 html, body {
   height: 100%;
   overflow: hidden;
@@ -20,28 +15,78 @@ body {
 #app {
   display: flex;
   flex-direction: row;
-  justify-content: center;
-  align-items: flex-start;
-  gap: 24px;
-  padding: 20px 0;
+  align-items: stretch;
   height: 100vh;
+  overflow: hidden;
 }
 
 #rive-canvas {
   display: block;
-  height: var(--canvas-height);
-  width: var(--canvas-width);
-  flex-shrink: 0;
+  flex: 1;
+  min-width: 0;
 }
 
 /* ── Controls panel ── */
 #controls {
-  width: var(--canvas-width);
-  height: var(--canvas-height);
+  width: 308px; /* 28px toggle + 280px content */
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  overflow: hidden;
+  border-left: 1px solid #222;
+  transition: width 0.25s ease;
+}
+
+#controls.collapsed {
+  width: 28px;
+}
+
+#sidebar-toggle {
+  width: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-right: 1px solid #222;
+  border-radius: 0;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s, background 0.15s;
+}
+
+#sidebar-toggle:hover {
+  color: #ccc;
+  background: #1a1a1a;
+  border-color: #444;
+}
+
+#sidebar-toggle svg {
+  transition: transform 0.25s ease;
+}
+
+#controls.collapsed #sidebar-toggle svg {
+  transform: rotate(180deg);
+}
+
+#controls-inner {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 24px;
+  padding: 20px;
   overflow-y: auto;
+  overflow-x: hidden;
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
+
+#controls.collapsed #controls-inner {
+  opacity: 0;
+  pointer-events: none;
 }
 
 section {
@@ -61,6 +106,14 @@ h3 {
 }
 
 /* ── Image inputs ── */
+.img-label {
+  font-size: 11px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-top: 4px;
+}
+
 select {
   background: #222;
   border: 1px solid #444;

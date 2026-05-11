@@ -1,10 +1,13 @@
+const canvas = document.getElementById("rive-canvas");
+
 const r = new rive.Rive({
   src: "rex.riv",
-  canvas: document.getElementById("rive-canvas"),
+  canvas,
   autoplay: true,
   autoBind: true,
-  artboard: "Main_Mobile",
+  artboard: "MAIN",
   stateMachines: "REX",
+  layout: new rive.Layout({ fit: rive.Fit.Layout }),
   onLoad() {
     r.resizeDrawingSurfaceToCanvas();
 
@@ -19,8 +22,8 @@ const r = new rive.Rive({
       r.volume = e.target.checked ? 1 : 0;
     });
 
-    const packImage = vmi.image("packGraphics");
-    setupImageControls(packImage);
+    setupImageControls(vmi.image("packGraphics"), "pack-select", PACK_IMAGES, "pack-file-input");
+    setupImageControls(vmi.image("cardImage"),    "card-select", CARD_IMAGES, "card-file-input");
 
     const shakePack3 = vmi.viewModel("pack3").trigger("shake");
     document.getElementById("btn-shake-pack3").addEventListener("click", () => {
@@ -36,34 +39,52 @@ const r = new rive.Rive({
   },
 });
 
+new ResizeObserver(() => r.resizeDrawingSurfaceToCanvas()).observe(canvas);
+
+document.getElementById("sidebar-toggle").addEventListener("click", () => {
+  document.getElementById("controls").classList.toggle("collapsed");
+});
+
 // ── Image controls ────────────────────────────────────────────────────────────
 
-const LOCAL_IMAGES = [
-  "PackGraphics_blue",
-  "PackGraphics_goldGreen",
-  "PackGraphics_red",
-  "PackGraphics_yellow",
+const PACK_IMAGES = [
+  { label: "PackGraphics_blue",      path: "img/PackGraphics_blue.png" },
+  { label: "PackGraphics_goldGreen", path: "img/PackGraphics_goldGreen.png" },
+  { label: "PackGraphics_red",       path: "img/PackGraphics_red.png" },
+  { label: "PackGraphics_yellow",    path: "img/PackGraphics_yellow.png" },
 ];
 
-function setupImageControls(imageProperty) {
-  const select = document.getElementById("asset-select");
-  select.innerHTML = '<option value="">— pick a pack —</option>';
-  for (const name of LOCAL_IMAGES) {
+const CARD_IMAGES = [
+  { label: "Alakazam",        path: "img/cards/Alakazam.jpeg" },
+  { label: "Basculin",        path: "img/cards/Basculin.png" },
+  { label: "Blastoise EX",    path: "img/cards/Blastoise EX.png" },
+  { label: "Charizard",       path: "img/cards/Charizard.jpeg" },
+  { label: "Fire Energy",     path: "img/cards/Fire Energy.jpeg" },
+  { label: "Mega Meganium EX",path: "img/cards/Mega Meganium EX.png" },
+  { label: "Voltorb",         path: "img/cards/Voltorb.jpeg" },
+];
+
+async function loadImageProperty(imageProperty, path) {
+  const res = await fetch(path);
+  const img = await rive.decodeImage(new Uint8Array(await res.arrayBuffer()));
+  imageProperty.value = img;
+  img.unref();
+}
+
+function setupImageControls(imageProperty, selectId, images, fileInputId) {
+  const select = document.getElementById(selectId);
+  for (const { label, path } of images) {
     const opt = document.createElement("option");
-    opt.value = `img/${name}.png`;
-    opt.textContent = name;
+    opt.value = path;
+    opt.textContent = label;
     select.appendChild(opt);
   }
 
-  select.addEventListener("change", async () => {
-    if (!select.value) return;
-    const res = await fetch(select.value);
-    const img = await rive.decodeImage(new Uint8Array(await res.arrayBuffer()));
-    imageProperty.value = img;
-    img.unref();
+  select.addEventListener("change", () => {
+    if (select.value) loadImageProperty(imageProperty, select.value);
   });
 
-  document.getElementById("file-input").addEventListener("change", async (e) => {
+  document.getElementById(fileInputId).addEventListener("change", async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const img = await rive.decodeImage(new Uint8Array(await file.arrayBuffer()));
