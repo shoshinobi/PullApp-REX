@@ -25,16 +25,20 @@ const r = new rive.Rive({
     setupImageControls(vmi.image("packGraphics"), "pack-select", PACK_IMAGES, "pack-file-input");
     setupImageControls(vmi.image("cardImage"),    "card-select", CARD_IMAGES, "card-file-input");
 
-    const shakePack3 = vmi.viewModel("pack3").trigger("shake");
+    const shakeHero = vmi.viewModel("heroPack").trigger("shake");
     document.getElementById("btn-shake-pack3").addEventListener("click", () => {
-      shakePack3.trigger();
+      shakeHero.trigger();
     });
 
-    const shakePack2 = vmi.viewModel("pack2").trigger("shake");
-    const shakePack4 = vmi.viewModel("pack4").trigger("shake");
+    const shakeSide1 = vmi.viewModel("pack1").trigger("shake");
+    const shakeSide2 = vmi.viewModel("pack2").trigger("shake");
+    const shakeSide4 = vmi.viewModel("pack4").trigger("shake");
+    const shakeSide5 = vmi.viewModel("pack5").trigger("shake");
     document.getElementById("btn-shake-pack2-4").addEventListener("click", () => {
-      shakePack2.trigger();
-      shakePack4.trigger();
+      shakeSide1.trigger();
+      shakeSide2.trigger();
+      shakeSide4.trigger();
+      shakeSide5.trigger();
     });
   },
 });

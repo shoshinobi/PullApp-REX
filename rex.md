@@ -28,6 +28,10 @@ artboards:
     size: [0, 0]
     origin: [0, 0]
     stateMachines: [State Machine 1]
+  - name: Card
+    size: [244, 334]
+    origin: [0, 0]
+    stateMachines: [State Machine 1]
   - name: Pack
     size: [300, 500]
     origin: [0.5, 0.5]
@@ -52,6 +56,7 @@ artboards:
 viewModels:
   - name: RipVM
     properties:
+      - { name: mobileProg, type: number }
       - { name: burst, type: trigger }
       - { name: burstActive, type: boolean }
       - { name: aligned, type: boolean }
@@ -62,6 +67,8 @@ viewModels:
     instances: [Instance]
   - name: MainVM
     properties:
+      - { name: canvasH, type: number }
+      - { name: canvasW, type: number }
       - { name: loadComplete, type: trigger }
       - { name: radialStreakColor, type: color }
       - { name: packGraphics, type: image }
@@ -72,7 +79,7 @@ viewModels:
       - { name: packSelected, type: trigger }
       - { name: openPack, type: viewModel }
       - { name: swap, type: trigger }
-      - { name: pack3, type: viewModel }
+      - { name: heroPack, type: viewModel }
       - { name: pack1, type: viewModel }
       - { name: pack2, type: viewModel }
       - { name: pack4, type: viewModel }
@@ -112,9 +119,9 @@ viewModels:
       - { name: isHero, type: boolean }
       - { name: isHovered, type: boolean }
       - { name: packEdgeGlow, type: boolean }
-    instances: [pack3, openPack, pack1, pack2, pack4, pack5]
+    instances: [heroPack, openPack, pack1, pack2, pack4, pack5]
 assets:
-  images: [imgSeq_18.png, imgSeq_50.png, imgSeq_25.png, PackMockup_Lighting.png, PackMockup_Blank.png, PackGraphics_goldGreen.png, imgSeq_32.png, imgSeq_39.png, imgSeq_0.png, imgSeq_7.png, imgSeq_14.png, imgSeq_46.png, imgSeq_21.png, imgSeq_28.png, imgSeq_53.png, imgSeq_35.png, imgSeq_42.png, imgSeq_3.png, imgSeq_10.png, imgSeq_17.png, imgSeq_49.png, imgSeq_24.png, imgSeq_31.png, imgSeq_38.png, cardFront.png, imgSeq_6.png, imgSeq_13.png, imgSeq_45.png, imgSeq_20.png, imgSeq_27.png, imgSeq_52.png, imgSeq_34.png, imgSeq_41.png, imgSeq_2.png, imgSeq_9.png, imgSeq_16.png, imgSeq_48.png, imgSeq_23.png, imgSeq_30.png, imgSeq_55.png, imgSeq_37.png, imgSeq_5.png, imgSeq_44.png, imgSeq_12.png, imgSeq_19.png, imgSeq_26.png, imgSeq_51.png, imgSeq_33.png, imgSeq_40.png, charizard.png, imgSeq_1.png, imgSeq_8.png, imgSeq_15.png, imgSeq_47.png, imgSeq_22.png, imgSeq_29.png, imgSeq_54.png, imgSeq_36.png, imgSeq_4.png, imgSeq_43.png, imgSeq_11.png]
+  images: [imgSeq_18.png, imgSeq_50.png, imgSeq_25.png, PackMockup_Lighting.png, PackMockup_Blank.png, PackGraphics_goldGreen.png, imgSeq_32.png, imgSeq_39.png, imgSeq_0.png, imgSeq_7.png, imgSeq_14.png, Charizard.png, imgSeq_46.png, imgSeq_21.png, imgSeq_28.png, imgSeq_53.png, imgSeq_35.png, imgSeq_42.png, imgSeq_3.png, imgSeq_10.png, imgSeq_17.png, imgSeq_49.png, imgSeq_24.png, imgSeq_31.png, imgSeq_38.png, cardFront.png, imgSeq_6.png, imgSeq_13.png, imgSeq_45.png, imgSeq_20.png, imgSeq_27.png, imgSeq_52.png, imgSeq_34.png, imgSeq_41.png, imgSeq_2.png, imgSeq_9.png, imgSeq_16.png, imgSeq_48.png, imgSeq_23.png, imgSeq_30.png, imgSeq_55.png, imgSeq_37.png, imgSeq_5.png, imgSeq_44.png, imgSeq_12.png, imgSeq_19.png, imgSeq_26.png, imgSeq_51.png, imgSeq_33.png, imgSeq_40.png, imgSeq_1.png, imgSeq_8.png, imgSeq_15.png, imgSeq_47.png, imgSeq_22.png, imgSeq_29.png, imgSeq_54.png, imgSeq_36.png, imgSeq_4.png, imgSeq_43.png, imgSeq_11.png, charizard.png]
   fonts: [Roboto.ttf]
   audio: [small_whoosh_fast_12 clip.wav, "AMBFant_Magical Place, High Bell Notes, High Tone, Low Wind, Loopable_Ocular Sounds_Fantasy Ambiences_The Complete Fantasy Collection_01.wav", UIMvmt_TRANSITION-Tonal Selection and Slide_Ocular_Vector.wav, small_whoosh_fast_10 clip.wav, dig_whoosh_08 clip.wav, "DSGNDron_Heartbeat Drone, Loop, Key Dmin_Ocular Sounds_Eerie Drones_The Complete Drones Collection_01.wav", Swipe Transition clip.wav, Heartbeat Vr1_01.wav]
 ---
