@@ -1,55 +1,6 @@
 const canvas = document.getElementById("rive-canvas");
 
-const r = new rive.Rive({
-  src: "rex.riv",
-  canvas,
-  autoplay: true,
-  autoBind: true,
-  artboard: "MAIN",
-  stateMachines: "REX",
-  layout: new rive.Layout({ fit: rive.Fit.Layout }),
-  onLoad() {
-    r.resizeDrawingSurfaceToCanvas();
-
-    const vmi = r.viewModelInstance;
-
-    const loadComplete = vmi.trigger("loadComplete");
-    document.getElementById("btn-load-complete").addEventListener("click", () => {
-      loadComplete.trigger();
-    });
-
-    document.getElementById("toggle-audio").addEventListener("change", (e) => {
-      r.volume = e.target.checked ? 1 : 0;
-    });
-
-    setupImageControls(vmi.image("packGraphics"), "pack-select", PACK_IMAGES, "pack-file-input");
-    setupImageControls(vmi.image("cardImage"),    "card-select", CARD_IMAGES, "card-file-input");
-
-    const shakeHero = vmi.viewModel("heroPack").trigger("shake");
-    document.getElementById("btn-shake-pack3").addEventListener("click", () => {
-      shakeHero.trigger();
-    });
-
-    const shakeSide1 = vmi.viewModel("pack1").trigger("shake");
-    const shakeSide2 = vmi.viewModel("pack2").trigger("shake");
-    const shakeSide4 = vmi.viewModel("pack4").trigger("shake");
-    const shakeSide5 = vmi.viewModel("pack5").trigger("shake");
-    document.getElementById("btn-shake-pack2-4").addEventListener("click", () => {
-      shakeSide1.trigger();
-      shakeSide2.trigger();
-      shakeSide4.trigger();
-      shakeSide5.trigger();
-    });
-  },
-});
-
-new ResizeObserver(() => r.resizeDrawingSurfaceToCanvas()).observe(canvas);
-
-document.getElementById("sidebar-toggle").addEventListener("click", () => {
-  document.getElementById("controls").classList.toggle("collapsed");
-});
-
-// ── Image controls ────────────────────────────────────────────────────────────
+// ── Image data ────────────────────────────────────────────────────────────────
 
 const PACK_IMAGES = [
   { label: "PackGraphics_blue",      path: "img/PackGraphics_blue.png" },
@@ -59,23 +10,240 @@ const PACK_IMAGES = [
 ];
 
 const CARD_IMAGES = [
-  { label: "Alakazam",        path: "img/cards/Alakazam.jpeg" },
-  { label: "Basculin",        path: "img/cards/Basculin.png" },
-  { label: "Blastoise EX",    path: "img/cards/Blastoise EX.png" },
-  { label: "Charizard",       path: "img/cards/Charizard.jpeg" },
-  { label: "Fire Energy",     path: "img/cards/Fire Energy.jpeg" },
-  { label: "Mega Meganium EX",path: "img/cards/Mega Meganium EX.png" },
-  { label: "Voltorb",         path: "img/cards/Voltorb.jpeg" },
+  { label: "Alakazam",         path: "img/cards/Alakazam.jpeg" },
+  { label: "Basculin",         path: "img/cards/Basculin.png" },
+  { label: "Blastoise EX",     path: "img/cards/Blastoise EX.png" },
+  { label: "Charizard",        path: "img/cards/Charizard.jpeg" },
+  { label: "Fire Energy",      path: "img/cards/Fire Energy.jpeg" },
+  { label: "Mega Meganium EX", path: "img/cards/Mega Meganium EX.png" },
+  { label: "Voltorb",          path: "img/cards/Voltorb.jpeg" },
 ];
 
-async function loadImageProperty(imageProperty, path) {
-  const res = await fetch(path);
-  const img = await rive.decodeImage(new Uint8Array(await res.arrayBuffer()));
-  imageProperty.value = img;
+function randomCard() {
+  const lastPath = localStorage.getItem("lastCardPath");
+  const pool = (lastPath ? CARD_IMAGES.filter(c => c.path !== lastPath) : CARD_IMAGES);
+  const candidates = pool.length > 0 ? pool : CARD_IMAGES;
+  const card = candidates[Math.floor(Math.random() * candidates.length)];
+  localStorage.setItem("lastCardPath", card.path);
+  return card;
+}
+
+// ── Mutable VM references — re-assigned on every load / restart ───────────────
+
+let loadCompleteTrigger = null;
+let shakeHeroTrigger    = null;
+let shakeSide1Trigger   = null;
+let shakeSide2Trigger   = null;
+let shakeSide4Trigger   = null;
+let shakeSide5Trigger   = null;
+let packImageProp       = null;
+let cardImageProp       = null;
+let sectionProp         = null;
+let packCountProp       = null;
+let rarityProp          = null;
+
+// ── Carried state — persists across restarts ──────────────────────────────────
+
+const DEFAULT_PACK   = PACK_IMAGES.find(p => p.label === "PackGraphics_goldGreen");
+
+let carriedPackCount    = null;
+let carriedPackImage    = DEFAULT_PACK.path;
+let carriedCardImage    = randomCard();  // random on first load, set by nextPack thereafter
+let autoCompleteLoading = true;
+
+let activeCardLabel = null;
+let activeCardSrc   = null;
+let activePackLabel = DEFAULT_PACK.label;
+let cardHistory       = [];
+let collectionViewed  = false;
+
+// ── Rive ──────────────────────────────────────────────────────────────────────
+
+let r = null;
+
+function startRive() {
+  r = new rive.Rive({
+    src: "rex.riv",
+    canvas,
+    autoplay: false,
+    autoBind: true,
+    artboard: "MAIN",
+    stateMachines: "REX",
+    layout: new rive.Layout({ fit: rive.Fit.Layout }),
+    onLoad() {
+      r.resizeDrawingSurfaceToCanvas();
+
+      const vmi = r.viewModelInstance;
+
+      // Set section before play so the state machine reads it on its first frame
+      const startSection = localStorage.getItem("startingSection") ?? "loading";
+      vmi.enum("section").value = startSection;
+      document.getElementById("section-select").value = startSection;
+
+      loadCompleteTrigger = vmi.trigger("loadComplete");
+      shakeHeroTrigger    = vmi.viewModel("heroPack").trigger("shake");
+      shakeSide1Trigger   = vmi.viewModel("pack1").trigger("shake");
+      shakeSide2Trigger   = vmi.viewModel("pack2").trigger("shake");
+      shakeSide4Trigger   = vmi.viewModel("pack4").trigger("shake");
+      shakeSide5Trigger   = vmi.viewModel("pack5").trigger("shake");
+      packImageProp       = vmi.image("packGraphics");
+      cardImageProp       = vmi.image("cardImage");
+
+      if (carriedCardImage) {
+        loadImageProperty(cardImageProp, carriedCardImage.path);
+        document.getElementById("card-select").value = carriedCardImage.path;
+        activeCardLabel = carriedCardImage.label;
+        activeCardSrc   = carriedCardImage.path;
+        carriedCardImage = null;
+      } else {
+        document.getElementById("card-select").value = "";
+        activeCardLabel = null;
+        activeCardSrc   = null;
+      }
+
+      if (carriedPackImage) {
+        loadImageProperty(packImageProp, carriedPackImage);
+        if (typeof carriedPackImage === "string") {
+          document.getElementById("pack-select").value = carriedPackImage;
+          activePackLabel = PACK_IMAGES.find(p => p.path === carriedPackImage)?.label ?? null;
+        }
+      }
+
+      sectionProp   = vmi.enum("section");
+      rarityProp    = vmi.enum("rarity");
+      packCountProp = vmi.number("packCount");
+
+      document.getElementById("rarity-select").value = rarityProp.value;
+
+      if (carriedPackCount !== null) packCountProp.value = carriedPackCount;
+      document.getElementById("pack-count-input").value = packCountProp.value;
+
+      sectionProp.on((value) => {
+        document.getElementById("section-select").value = value;
+      });
+
+      vmi.trigger("nextPack").on(() => {
+        showToast("nextPack fired");
+        if (!collectionViewed) cardHistory.push({ label: activeCardLabel, src: activeCardSrc, pack: activePackLabel });
+        const next = Math.max(0, packCountProp.value - 1);
+        packCountProp.value = next;
+        carriedPackCount = next;
+        document.getElementById("pack-count-input").value = next;
+        carriedCardImage = randomCard();
+        restart();
+      });
+
+      vmi.trigger("viewInCollection").on(() => {
+        if (!collectionViewed && (activeCardLabel || activeCardSrc)) {
+          cardHistory.push({ label: activeCardLabel, src: activeCardSrc, pack: activePackLabel });
+        }
+        collectionViewed = true;
+        showCollectionModal();
+      });
+
+      r.volume = document.getElementById("toggle-audio").checked ? 1 : 0;
+
+      r.play("REX");
+
+      if (autoCompleteLoading) requestAnimationFrame(() => loadCompleteTrigger.trigger());
+    },
+  });
+}
+
+startRive();
+
+new ResizeObserver(() => r?.resizeDrawingSurfaceToCanvas()).observe(canvas);
+
+// ── DOM listeners (added once) ────────────────────────────────────────────────
+
+function restart() {
+  r.cleanup();
+  startRive();
+}
+
+document.getElementById("btn-restart").addEventListener("click", () => {
+  cardHistory = [];
+  collectionViewed = false;
+  carriedCardImage = randomCard();
+  restart();
+});
+
+document.getElementById("btn-load-complete").addEventListener("click", () => {
+  loadCompleteTrigger?.trigger();
+});
+
+document.getElementById("toggle-audio").addEventListener("change", (e) => {
+  r.volume = e.target.checked ? 1 : 0;
+});
+
+document.getElementById("btn-shake-pack3").addEventListener("click", () => {
+  shakeHeroTrigger?.trigger();
+});
+
+document.getElementById("btn-shake-pack2-4").addEventListener("click", () => {
+  shakeSide1Trigger?.trigger();
+  shakeSide2Trigger?.trigger();
+  shakeSide4Trigger?.trigger();
+  shakeSide5Trigger?.trigger();
+});
+
+document.getElementById("toggle-auto-load").addEventListener("change", (e) => {
+  autoCompleteLoading = e.target.checked;
+});
+
+const sectionStartSelect = document.getElementById("section-start-select");
+sectionStartSelect.value = localStorage.getItem("startingSection") ?? "loading";
+sectionStartSelect.addEventListener("change", (e) => {
+  localStorage.setItem("startingSection", e.target.value);
+});
+
+document.getElementById("rarity-select").addEventListener("change", (e) => {
+  if (rarityProp) rarityProp.value = e.target.value;
+});
+
+document.getElementById("section-select").addEventListener("change", (e) => {
+  if (sectionProp) sectionProp.value = e.target.value;
+});
+
+document.getElementById("pack-count-input").addEventListener("input", (e) => {
+  const val = Number(e.target.value);
+  carriedPackCount = val;
+  if (packCountProp) packCountProp.value = val;
+});
+
+document.getElementById("sidebar-toggle").addEventListener("click", () => {
+  document.getElementById("controls").classList.toggle("collapsed");
+});
+
+document.getElementById("modal-restart-btn").addEventListener("click", () => {
+  hideCollectionModal();
+  cardHistory = [];
+  collectionViewed = false;
+  carriedCardImage = randomCard();
+  restart();
+});
+
+document.getElementById("collection-modal").addEventListener("click", (e) => {
+  if (e.target !== e.currentTarget) return;
+  hideCollectionModal();
+  cardHistory = [];
+  collectionViewed = false;
+  carriedCardImage = randomCard();
+  restart();
+});
+
+// ── Image controls ────────────────────────────────────────────────────────────
+
+async function loadImageProperty(prop, src) {
+  const bytes = src instanceof File
+    ? new Uint8Array(await src.arrayBuffer())
+    : new Uint8Array(await (await fetch(src)).arrayBuffer());
+  const img = await rive.decodeImage(bytes);
+  prop.value = img;
   img.unref();
 }
 
-function setupImageControls(imageProperty, selectId, images, fileInputId) {
+function setupImageControls(getProp, selectId, images, fileInputId, onSelect) {
   const select = document.getElementById(selectId);
   for (const { label, path } of images) {
     const opt = document.createElement("option");
@@ -85,14 +253,98 @@ function setupImageControls(imageProperty, selectId, images, fileInputId) {
   }
 
   select.addEventListener("change", () => {
-    if (select.value) loadImageProperty(imageProperty, select.value);
+    const prop = getProp();
+    if (select.value && prop) {
+      loadImageProperty(prop, select.value);
+      onSelect?.(select.value);
+    }
   });
 
-  document.getElementById(fileInputId).addEventListener("change", async (e) => {
+  document.getElementById(fileInputId).addEventListener("change", (e) => {
     const file = e.target.files[0];
-    if (!file) return;
-    const img = await rive.decodeImage(new Uint8Array(await file.arrayBuffer()));
-    imageProperty.value = img;
-    img.unref();
+    const prop = getProp();
+    if (!file || !prop) return;
+    loadImageProperty(prop, file);
+    onSelect?.(file);
   });
+}
+
+setupImageControls(
+  () => packImageProp, "pack-select", PACK_IMAGES, "pack-file-input",
+  (src) => {
+    carriedPackImage = src;
+    activePackLabel  = PACK_IMAGES.find(p => p.path === src)?.label
+                       ?? (src instanceof File ? src.name : null);
+  }
+);
+setupImageControls(
+  () => cardImageProp, "card-select", CARD_IMAGES, "card-file-input",
+  (src) => {
+    const entry    = CARD_IMAGES.find(c => c.path === src);
+    activeCardLabel = entry?.label ?? (src instanceof File ? src.name : null);
+    activeCardSrc   = src instanceof File ? URL.createObjectURL(src) : src;
+    if (typeof src === "string") localStorage.setItem("lastCardPath", src);
+  }
+);
+
+// ── Collection modal ──────────────────────────────────────────────────────────
+
+function showCollectionModal() {
+  const list = document.getElementById("modal-cards-list");
+  list.innerHTML = "";
+
+  if (cardHistory.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "modal-empty";
+    empty.textContent = "No cards collected yet.";
+    list.appendChild(empty);
+  } else {
+    for (const card of cardHistory) {
+      const row = document.createElement("div");
+      row.className = "modal-card-row";
+
+      const thumb = document.createElement("img");
+      thumb.className = "modal-card-thumb";
+      thumb.src = card.src ?? "";
+      thumb.style.visibility = card.src ? "visible" : "hidden";
+
+      const info = document.createElement("div");
+      info.className = "modal-card-info";
+
+      const name = document.createElement("p");
+      name.className = "modal-card-name";
+      name.textContent = card.label ?? "—";
+
+      const pack = document.createElement("p");
+      pack.className = "modal-card-pack";
+      pack.textContent = card.pack ?? "—";
+
+      info.append(name, pack);
+      row.append(thumb, info);
+      list.appendChild(row);
+    }
+  }
+
+  document.getElementById("collection-modal").removeAttribute("hidden");
+}
+
+function hideCollectionModal() {
+  document.getElementById("collection-modal").setAttribute("hidden", "");
+}
+
+// ── Toasts ────────────────────────────────────────────────────────────────────
+
+function showToast(message) {
+  const container = document.getElementById("toast-container");
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.textContent = message;
+  container.appendChild(toast);
+
+  requestAnimationFrame(() => requestAnimationFrame(() => toast.classList.add("show")));
+
+  setTimeout(() => {
+    toast.classList.remove("show");
+    toast.addEventListener("transitionend", () => toast.remove(), { once: true });
+  }, 2500);
 }

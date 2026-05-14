@@ -27,17 +27,44 @@
         <input type="file" id="card-file-input" accept="image/*" />
       </section>
 
+      <section id="config-section">
+        <h3>Config</h3>
+        <label class="img-label">Starting Section</label>
+        <select id="section-start-select">
+          <option value="loading">loading</option>
+          <option value="rip">rip</option>
+        </select>
+        <label class="img-label">Current Section</label>
+        <select id="section-select">
+          <option value="loading">loading</option>
+          <option value="carousel">carousel</option>
+          <option value="rip">rip</option>
+          <option value="cover">cover</option>
+          <option value="reveal">reveal</option>
+        </select>
+        <label class="img-label">Rarity</label>
+        <select id="rarity-select">
+          <option value="common">Common</option>
+          <option value="uncommon">Uncommon</option>
+          <option value="rare">Rare</option>
+          <option value="special">Special</option>
+        </select>
+        <label class="img-label">Pack count</label>
+        <input type="number" id="pack-count-input" min="1" value="1" />
+      </section>
+
       <section id="triggers-section">
         <h3>Triggers</h3>
         <div id="triggers">
           <button id="btn-load-complete">Loading complete</button>
           <button id="btn-shake-pack3">Shake hero Pack</button>
           <button id="btn-shake-pack2-4">Shake side packs</button>
+          <button id="btn-restart">Restart</button>
         </div>
       </section>
 
       <section id="booleans-section">
-        <h3>Booleans</h3>
+        <h3>Settings</h3>
         <div id="booleans">
           <div class="bool-row">
             <label for="toggle-audio">Audio</label>
@@ -46,9 +73,26 @@
               <span class="toggle-track"></span>
             </label>
           </div>
+          <div class="bool-row">
+            <label for="toggle-auto-load">Auto complete loading</label>
+            <label class="toggle">
+              <input type="checkbox" id="toggle-auto-load" checked />
+              <span class="toggle-track"></span>
+            </label>
+          </div>
         </div>
       </section>
       </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <div id="collection-modal" class="modal-overlay" hidden>
+    <div class="modal">
+      <p class="modal-header">Vault Collection</p>
+      <div id="modal-cards-list"></div>
+      <button id="modal-restart-btn">Restart</button>
     </div>
   </div>
 

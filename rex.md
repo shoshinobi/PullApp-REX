@@ -54,25 +54,21 @@ artboards:
     size: [310, 346]
     origin: [0.5, 0.5]
 viewModels:
-  - name: RipVM
-    properties:
-      - { name: mobileProg, type: number }
-      - { name: burst, type: trigger }
-      - { name: burstActive, type: boolean }
-      - { name: aligned, type: boolean }
-      - { name: ripped, type: trigger }
-      - { name: isPressed, type: boolean }
-      - { name: isTracking, type: boolean }
-      - { name: prog, type: number }
-    instances: [Instance]
   - name: MainVM
     properties:
+      - { name: loadComplete, type: trigger }
+      - { name: section, type: enum, enum: Section }
+      - { name: packCount, type: number }
+      - { name: finished, type: boolean }
+      - { name: viewInCollection, type: trigger }
+      - { name: nextPack, type: trigger }
+      - { name: skip, type: trigger }
       - { name: canvasH, type: number }
       - { name: canvasW, type: number }
-      - { name: loadComplete, type: trigger }
       - { name: radialStreakColor, type: color }
       - { name: packGraphics, type: image }
       - { name: cardImage, type: image }
+      - { name: rarity, type: enum, enum: Rarity }
       - { name: shuffleLeft, type: trigger }
       - { name: shuffleRight, type: trigger }
       - { name: readyToRip, type: boolean }
@@ -84,11 +80,23 @@ viewModels:
       - { name: pack2, type: viewModel }
       - { name: pack4, type: viewModel }
       - { name: pack5, type: viewModel }
+      - { name: btnNext, type: viewModel }
       - { name: btnSkip, type: viewModel }
-      - { name: skip, type: trigger }
       - { name: btnViewInCollection, type: viewModel }
       - { name: propertyOfBackgroundVM, type: viewModel }
       - { name: propertyOfRipVM, type: viewModel }
+    instances: [Instance]
+  - name: RipVM
+    properties:
+      - { name: cardRevealed, type: boolean }
+      - { name: mobileProg, type: number }
+      - { name: burst, type: trigger }
+      - { name: burstActive, type: boolean }
+      - { name: aligned, type: boolean }
+      - { name: ripped, type: trigger }
+      - { name: isPressed, type: boolean }
+      - { name: isTracking, type: boolean }
+      - { name: prog, type: number }
     instances: [Instance]
   - name: RadialStreaks
     properties:
@@ -101,7 +109,7 @@ viewModels:
       - { name: btnText, type: string }
       - { name: isClicked, type: trigger }
       - { name: isHovered, type: boolean }
-    instances: [skip, viewInCollection]
+    instances: [skip, viewInCollection, next]
   - name: BackgroundVM
     properties:
       - { name: propertyOfRadialStreaks, type: viewModel }
@@ -120,6 +128,11 @@ viewModels:
       - { name: isHovered, type: boolean }
       - { name: packEdgeGlow, type: boolean }
     instances: [heroPack, openPack, pack1, pack2, pack4, pack5]
+enums:
+  - name: Rarity
+    values: [common, uncommon, rare, special]
+  - name: Section
+    values: [loading, carousel, rip, cover, reveal]
 assets:
   images: [imgSeq_18.png, imgSeq_50.png, imgSeq_25.png, PackMockup_Lighting.png, PackMockup_Blank.png, PackGraphics_goldGreen.png, imgSeq_32.png, imgSeq_39.png, imgSeq_0.png, imgSeq_7.png, imgSeq_14.png, Charizard.png, imgSeq_46.png, imgSeq_21.png, imgSeq_28.png, imgSeq_53.png, imgSeq_35.png, imgSeq_42.png, imgSeq_3.png, imgSeq_10.png, imgSeq_17.png, imgSeq_49.png, imgSeq_24.png, imgSeq_31.png, imgSeq_38.png, cardFront.png, imgSeq_6.png, imgSeq_13.png, imgSeq_45.png, imgSeq_20.png, imgSeq_27.png, imgSeq_52.png, imgSeq_34.png, imgSeq_41.png, imgSeq_2.png, imgSeq_9.png, imgSeq_16.png, imgSeq_48.png, imgSeq_23.png, imgSeq_30.png, imgSeq_55.png, imgSeq_37.png, imgSeq_5.png, imgSeq_44.png, imgSeq_12.png, imgSeq_19.png, imgSeq_26.png, imgSeq_51.png, imgSeq_33.png, imgSeq_40.png, imgSeq_1.png, imgSeq_8.png, imgSeq_15.png, imgSeq_47.png, imgSeq_22.png, imgSeq_29.png, imgSeq_54.png, imgSeq_36.png, imgSeq_4.png, imgSeq_43.png, imgSeq_11.png, charizard.png]
   fonts: [Roboto.ttf]
