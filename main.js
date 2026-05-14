@@ -58,6 +58,7 @@ let activeCardSrc    = null;
 let activePackLabel  = DEFAULT_PACK.label;
 let cardHistory      = [];
 let collectionViewed = false;
+let nextPackFired    = false;
 
 // ── Rive ──────────────────────────────────────────────────────────────────────
 
@@ -115,16 +116,20 @@ function startRive() {
       rarityProp    = vmi.enum("rarity");
       packCountProp = vmi.number("packCount");
 
-      document.getElementById("rarity-select").value    = rarityProp.value;
-      document.getElementById("pack-count-input").value = packCountProp.value;
+      document.getElementById("rarity-select").value = rarityProp.value;
 
       if (carriedPackCount !== null) packCountProp.value = carriedPackCount;
+      document.getElementById("pack-count-input").value = packCountProp.value;
 
       sectionProp.on(value => {
         document.getElementById("section-select").value = value;
       });
 
+      nextPackFired = false;
+
       vmi.trigger("nextPack").on(() => {
+        if (nextPackFired) return;
+        nextPackFired = true;
         showToast("nextPack fired");
         if (!collectionViewed) {
           cardHistory.push({ label: activeCardLabel, src: activeCardSrc, pack: activePackLabel });
