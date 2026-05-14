@@ -8,7 +8,17 @@
 </head>
 <body>
   <div id="app">
-    <canvas id="rive-canvas"></canvas>
+    <div id="canvas-wrap">
+      <canvas id="rive-canvas"></canvas>
+
+      <div id="collection-modal" class="modal-overlay" hidden>
+        <div class="modal">
+          <p class="modal-header">Vault Collection</p>
+          <div id="modal-cards-list"></div>
+          <button id="modal-restart-btn">Restart</button>
+        </div>
+      </div>
+    </div>
 
     <div id="controls">
       <button id="sidebar-toggle" aria-label="Toggle sidebar">
@@ -87,14 +97,6 @@
   </div>
 
   <div id="toast-container"></div>
-
-  <div id="collection-modal" class="modal-overlay" hidden>
-    <div class="modal">
-      <p class="modal-header">Vault Collection</p>
-      <div id="modal-cards-list"></div>
-      <button id="modal-restart-btn">Restart</button>
-    </div>
-  </div>
 
   <script src="https://unpkg.com/@rive-app/webgl2@latest"></script>
   <script src="main.js"></script>
