@@ -38,11 +38,12 @@ let shakeSide1Trigger   = null;
 let shakeSide2Trigger   = null;
 let shakeSide4Trigger   = null;
 let shakeSide5Trigger   = null;
-let packImageProp       = null;
-let cardImageProp       = null;
-let sectionProp         = null;
-let rarityProp          = null;
-let packCountProp       = null;
+let packImageProp        = null;
+let cardImageProp        = null;
+let sectionProp          = null;
+let rarityProp           = null;
+let packCountProp        = null;
+let isNativeMobileProp   = null;
 
 // ── Session state — persists across restarts ──────────────────────────────────
 
@@ -113,8 +114,9 @@ function startRive() {
       }
 
       sectionProp   = vmi.enum("section");
-      rarityProp    = vmi.enum("rarity");
-      packCountProp = vmi.number("packCount");
+      rarityProp         = vmi.enum("rarity");
+      packCountProp      = vmi.number("packCount");
+      isNativeMobileProp = vmi.boolean("isNativeMobile");
 
       document.getElementById("rarity-select").value = rarityProp.value;
 
@@ -209,6 +211,10 @@ document.getElementById("toggle-audio").addEventListener("change", (e) => {
 
 document.getElementById("toggle-auto-load").addEventListener("change", (e) => {
   autoCompleteLoading = e.target.checked;
+});
+
+document.getElementById("toggle-native-mobile").addEventListener("change", (e) => {
+  if (isNativeMobileProp) isNativeMobileProp.value = e.target.checked;
 });
 
 document.getElementById("section-select").addEventListener("change", (e) => {
