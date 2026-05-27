@@ -44,6 +44,7 @@ let sectionProp          = null;
 let rarityProp           = null;
 let packCountProp        = null;
 let isNativeMobileProp   = null;
+let isDegradedProp       = null;
 
 // ── Session state — persists across restarts ──────────────────────────────────
 
@@ -117,6 +118,8 @@ function startRive() {
       rarityProp         = vmi.enum("rarity");
       packCountProp      = vmi.number("packCount");
       isNativeMobileProp = vmi.boolean("isNativeMobile");
+      isDegradedProp       = vmi.boolean("isDegraded");
+      isDegradedProp.value = document.getElementById("toggle-degraded").checked;
 
       document.getElementById("rarity-select").value = rarityProp.value;
 
@@ -215,6 +218,10 @@ document.getElementById("toggle-auto-load").addEventListener("change", (e) => {
 
 document.getElementById("toggle-native-mobile").addEventListener("change", (e) => {
   if (isNativeMobileProp) isNativeMobileProp.value = e.target.checked;
+});
+
+document.getElementById("toggle-degraded").addEventListener("change", (e) => {
+  if (isDegradedProp) isDegradedProp.value = e.target.checked;
 });
 
 document.getElementById("section-select").addEventListener("change", (e) => {
