@@ -45,6 +45,7 @@ let rarityProp           = null;
 let packCountProp        = null;
 let isNativeMobileProp   = null;
 let isDegradedProp       = null;
+let onboardingActiveProp = null;
 
 // ── Session state — persists across restarts ──────────────────────────────────
 
@@ -118,8 +119,13 @@ function startRive() {
       rarityProp         = vmi.enum("rarity");
       packCountProp      = vmi.number("packCount");
       isNativeMobileProp = vmi.boolean("isNativeMobile");
-      isDegradedProp       = vmi.boolean("isDegraded");
-      isDegradedProp.value = document.getElementById("toggle-degraded").checked;
+      isDegradedProp           = vmi.boolean("isDegraded");
+      isDegradedProp.value     = document.getElementById("toggle-degraded").checked;
+      const onboardingStored = localStorage.getItem("onboardingActive");
+      const onboardingOn     = onboardingStored === null ? true : onboardingStored === "true";
+      document.getElementById("toggle-onboarding").checked = onboardingOn;
+      onboardingActiveProp         = vmi.boolean("onboardingActive");
+      onboardingActiveProp.value   = onboardingOn;
 
       document.getElementById("rarity-select").value = rarityProp.value;
 
@@ -222,6 +228,11 @@ document.getElementById("toggle-native-mobile").addEventListener("change", (e) =
 
 document.getElementById("toggle-degraded").addEventListener("change", (e) => {
   if (isDegradedProp) isDegradedProp.value = e.target.checked;
+});
+
+document.getElementById("toggle-onboarding").addEventListener("change", (e) => {
+  localStorage.setItem("onboardingActive", e.target.checked);
+  if (onboardingActiveProp) onboardingActiveProp.value = e.target.checked;
 });
 
 document.getElementById("section-select").addEventListener("change", (e) => {
