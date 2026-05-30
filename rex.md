@@ -5,22 +5,45 @@ artboards:
     size: [400, 850]
     origin: [0, 0]
     stateMachines: [REX]
-  - name: LoadingLoop
-    size: [294, 191]
+  - name: Pack Carousel
+    size: [1200, 850]
     origin: [0.5, 0.5]
+    stateMachines: [CarouselSM]
   - name: Onboarding Hand
     size: [91, 105]
     origin: [0, 0]
     stateMachines: [obHandSM]
-  - name: streakParticle
-    size: [0, 0]
+  - name: riptopSprite
+    size: [1023, 216]
     origin: [0, 0]
     stateMachines: [State Machine 1]
+  - name: Pack
+    size: [300, 500]
+    origin: [0.5, 0.5]
+    stateMachines: [PackSM]
+  - name: cardFront
+    size: [250, 334]
+    origin: [0, 0]
+    stateMachines: [CardFrontSM]
+  - name: Card
+    size: [244, 334]
+    origin: [0, 0]
+    stateMachines: [CardSM]
   - name: RadialStreaks
     size: [0, 0]
     origin: [0, 0]
     stateMachines: [State Machine 1]
-  - name: starParticle
+  - name: Burst
+    size: [310, 346]
+    origin: [0.5, 0.5]
+  - name: Loading
+    size: [400, 800]
+    origin: [0, 0]
+    stateMachines: [State Machine 1]
+  - name: LoadingLoop
+    size: [294, 191]
+    origin: [0.5, 0.5]
+  - name: streakParticle 2
     size: [0, 0]
     origin: [0, 0]
     stateMachines: [State Machine 1]
@@ -28,40 +51,23 @@ artboards:
     size: [300, 63]
     origin: [0, 0]
     stateMachines: [btnSM]
-  - name: dotParticle
-    size: [0, 0]
-    origin: [0, 0]
-    stateMachines: [State Machine 1]
   - name: Onboarding Text
     size: [302, 69]
     origin: [0.5, 0.5]
     stateMachines: [obTextSM]
-  - name: Burst
-    size: [310, 346]
-    origin: [0.5, 0.5]
-  - name: Pack
-    size: [300, 500]
-    origin: [0.5, 0.5]
-    stateMachines: [PackSM]
-  - name: Rip Top 2
-    size: [2100, 360]
-    origin: [0.5, 0.5]
-  - name: Rip Top 2_nested_sequence_0
-    size: [2100, 360]
-    origin: [0, 0]
-  - name: cardFront
-    size: [250, 334]
-    origin: [0, 0]
-    stateMachines: [CardFrontSM]
-  - name: bubbleParticle
+  - name: streakParticle
     size: [0, 0]
     origin: [0, 0]
     stateMachines: [State Machine 1]
-  - name: Loading
-    size: [400, 800]
+  - name: dotParticle
+    size: [0, 0]
     origin: [0, 0]
     stateMachines: [State Machine 1]
-  - name: streakParticle 2
+  - name: starParticle
+    size: [0, 0]
+    origin: [0, 0]
+    stateMachines: [State Machine 1]
+  - name: bubbleParticle
     size: [0, 0]
     origin: [0, 0]
     stateMachines: [State Machine 1]
@@ -184,16 +190,16 @@ viewModels:
       - { name: btnText, type: string }
       - { name: isClicked, type: trigger }
       - { name: isHovered, type: boolean }
-    instances: [skip, viewInCollection, next, RadialStreaks Instance, Onboarding Hand Instance, Onboarding Hand Instance]
+    instances: [skip, viewInCollection, next, Onboarding Hand Instance, Onboarding Hand Instance, RadialStreaks Instance]
 enums:
-  - name: Rarity
-    values: [common, uncommon, rare, epic, legendary, grail]
   - name: Section
     values: [loading, carousel, rip, cover, reveal]
+  - name: Rarity
+    values: [common, uncommon, rare, epic, legendary, grail]
 assets:
-  images: [imgSeq_18.png, imgSeq_50.png, imgSeq_25.png, PackMockup_Lighting.png, PackMockup_Blank.png, PackGraphics_goldGreen.png, imgSeq_32.png, imgSeq_39.png, imgSeq_0.png, imgSeq_7.png, imgSeq_14.png, Charizard.png, imgSeq_46.png, imgSeq_21.png, imgSeq_28.png, imgSeq_53.png, imgSeq_35.png, cardFront.png, imgSeq_42.png, imgSeq_3.png, imgSeq_10.png, imgSeq_17.png, imgSeq_49.png, imgSeq_24.png, imgSeq_31.png, imgSeq_38.png, imgSeq_6.png, imgSeq_13.png, imgSeq_45.png, imgSeq_20.png, imgSeq_27.png, imgSeq_52.png, imgSeq_34.png, imgSeq_41.png, imgSeq_2.png, imgSeq_9.png, imgSeq_16.png, imgSeq_48.png, imgSeq_23.png, imgSeq_30.png, imgSeq_55.png, imgSeq_37.png, imgSeq_5.png, imgSeq_44.png, imgSeq_12.png, imgSeq_19.png, imgSeq_26.png, imgSeq_51.png, imgSeq_33.png, imgSeq_40.png, imgSeq_1.png, imgSeq_8.png, imgSeq_15.png, imgSeq_47.png, imgSeq_22.png, imgSeq_29.png, imgSeq_54.png, imgSeq_36.png, imgSeq_4.png, imgSeq_43.png, imgSeq_11.png, charizard.png]
-  fonts: [Roboto Flex.ttf, Roboto.ttf]
-  audio: [skip3 clip.wav, packOpen12.wav, packOpen.wav, cardReveal0.wav, coverCardOutImpact.wav, idleBGloop0.wav, heartbeat.wav, rippingloop2.wav, packSelect5.wav, carouselFormation.wav, swipe2.wav, legendary1.wav, legendary2.wav, common2.wav, rare.wav, uncommon.wav, grail1.wav, skip3.wav, music3.wav, swipe1.wav]
+  images: [cardFront.png, PackMockup_Lighting.png, PackMockup_Blank.png, PackGraphics_goldGreen.png, Charizard.png, charizard.png, riptop4k.png]
+  fonts: [Roboto.ttf, Roboto Flex.ttf]
+  audio: [skip3 clip.wav, packOpen.wav, idleBGloop0.wav, heartbeat.wav, packSelect5.wav, carouselFormation.wav, rare.wav, uncommon.wav, legendary1.wav, music3.wav, common2.wav, packOpen12.wav, cardReveal0.wav, coverCardOutImpact.wav, skip3.wav, grail1.wav, legendary2.wav, swipe2.wav, swipe1.wav, rippingloop2.wav]
 ---
 
 ## Comments
