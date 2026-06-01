@@ -9,6 +9,13 @@ const PACK_IMAGES = [
   { label: "PackGraphics_yellow",    path: "img/PackGraphics_yellow.png" },
 ];
 
+const SPRITE_IMAGES = [
+  { label: "Blue",   path: "img/sprites/BlueSprite.png"   },
+  { label: "Green",  path: "img/sprites/GreenSprite.png"  },
+  { label: "Red",    path: "img/sprites/RedSprite.png"    },
+  { label: "Yellow", path: "img/sprites/YellowSprite.png" },
+];
+
 const CARD_IMAGES = [
   { label: "Alakazam",         path: "img/cards/Alakazam.jpeg" },
   { label: "Basculin",         path: "img/cards/Basculin.png" },
@@ -40,6 +47,7 @@ let shakeSide4Trigger   = null;
 let shakeSide5Trigger   = null;
 let packImageProp        = null;
 let cardImageProp        = null;
+let topSpriteImgProp     = null;
 let sectionProp          = null;
 let rarityProp           = null;
 let packCountProp        = null;
@@ -51,8 +59,11 @@ let onboardingActiveProp = null;
 
 const DEFAULT_PACK   = PACK_IMAGES.find(p => p.label === "PackGraphics_goldGreen");
 
+const DEFAULT_SPRITE = SPRITE_IMAGES[0];
+
 let carriedPackCount    = null;
 let carriedPackImage    = DEFAULT_PACK.path;
+let carriedSpriteImage  = DEFAULT_SPRITE.path;
 let carriedCardImage    = randomCard();
 let autoCompleteLoading = true;
 
@@ -112,6 +123,14 @@ function startRive() {
         if (typeof carriedPackImage === "string") {
           document.getElementById("pack-select").value = carriedPackImage;
           activePackLabel = PACK_IMAGES.find(p => p.path === carriedPackImage)?.label ?? null;
+        }
+      }
+
+      topSpriteImgProp = vmi.image("topSpriteImg");
+      if (carriedSpriteImage) {
+        loadImageProperty(topSpriteImgProp, carriedSpriteImage);
+        if (typeof carriedSpriteImage === "string") {
+          document.getElementById("sprite-select").value = carriedSpriteImage;
         }
       }
 
@@ -302,6 +321,11 @@ setupImageControls(
     activePackLabel  = PACK_IMAGES.find(p => p.path === src)?.label
                        ?? (src instanceof File ? src.name : null);
   }
+);
+
+setupImageControls(
+  () => topSpriteImgProp, "sprite-select", SPRITE_IMAGES, "sprite-file-input",
+  (src) => { carriedSpriteImage = src; }
 );
 
 setupImageControls(
