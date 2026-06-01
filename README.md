@@ -51,7 +51,7 @@ The `section` enum on `MainVM` controls which part of the experience is active. 
 
 After loading, the user is presented with a carousel of five packs. The center slot (`heroPack`) is the highlighted selection; the surrounding slots are `pack1`, `pack2`, `pack4`, and `pack5`.
 
-- **Navigating** — fire `shuffleLeft` or `shuffleRight` on `MainVM` to move through the carousel.
+- **Navigating** — fire `shuffleLeft` or `shuffleRight` on `MainVM` to move through the carousel. `shuffleLeft2` and `shuffleRight2` are also available as secondary shuffle triggers.
 - **Selecting** — fire `packSelected` on `MainVM` when the user confirms their choice. This transitions the scene from selection into the pack-opening flow.
 - **Shaking** — each pack slot exposes a `shake` trigger via its `PackVM`. The harness **Shake hero pack** button triggers `heroPack`; **Shake side packs** triggers `pack1`, `pack2`, `pack4`, and `pack5` simultaneously.
 - **Hover** — set `isHovered` on any `PackVM` to show the hover highlight. Drive it with pointer-enter and pointer-leave events. `packEdgeGlow` enables an additional edge glow effect on a given pack.
@@ -65,6 +65,10 @@ Once a pack is selected it becomes `openPack` — the `PackVM` instance that dri
 ### Pack graphics
 
 `packGraphics` on `MainVM` is a data-bound image slot for the pack face texture. Swapping it updates the design shown across all pack slots simultaneously. The harness **Pack** dropdown pre-loads four colour variants; you can also upload any image via the file picker. The selected pack persists across restarts.
+
+### Sprite image
+
+`topSpriteImg` on `MainVM` is a data-bound image slot for the sprite overlay shown during the reveal. The harness **Sprite** dropdown pre-loads four variants from `img/sprites/` (Blue, Green, Red, Yellow); you can also upload any image via the file picker. The selection persists across restarts.
 
 ### Rip interaction
 
@@ -91,7 +95,9 @@ The harness **Card** dropdown pre-loads several card images from `img/cards/`; y
 
 ### Rarity
 
-`rarity` on `MainVM` is an enum with four values: `common`, `uncommon`, `rare`, `special`. The harness **Rarity** dropdown updates it live.
+`rarity` on `MainVM` is an enum with six values: `common`, `uncommon`, `rare`, `epic`, `legendary`, `grail`. Set this before `r.play()` to match the card being revealed. The harness **Rarity** dropdown updates it live.
+
+`rarityColor` on `MainVM` is a colour property that can be used to tint rarity-specific UI elements to match the card tier.
 
 ### Pack count
 
@@ -108,9 +114,21 @@ When Rive fires the `nextPack` trigger on `MainVM`, the harness:
 
 ### Vault Collection
 
-When Rive fires the `viewInCollection` trigger on `MainVM`, the harness opens the **Vault Collection** modal showing every card revealed during the session. Each entry shows the card thumbnail, card name, and pack name. Once the collection is shown, no further cards are recorded.
+When Rive fires the `viewInCollection` trigger on `MainVM`, the harness opens the **Vault Collection** modal — positioned over the canvas — showing every card revealed during the session. Each entry shows the card thumbnail, card name, and pack name. Once the collection is shown, no further cards are recorded.
 
 Clicking **Restart** inside the modal, clicking anywhere outside the modal, or clicking the sidebar **Restart** button all perform a full reset: session history is cleared, a new random card is selected, and the Rive instance restarts from the beginning.
+
+---
+
+## Runtime flags
+
+The following boolean properties on `MainVM` should be set before `r.play()` so the state machine's first frame reflects the correct context. The harness exposes each as a toggle in the **Settings** section.
+
+| Property | Default | Description |
+|---|---|---|
+| `isNativeMobile` | `false` | Set to `true` when running inside a native mobile wrapper (React Native, etc.) to enable mobile-specific layout and interaction paths. |
+| `isDegraded` | `false` | Set to `true` to activate the degraded-mode visual fallback (reduced effects for lower-end devices). |
+| `onboardingActive` | `true` | Set to `false` once the user has completed onboarding to skip the onboarding overlay. Persists in `localStorage`. |
 
 ---
 
