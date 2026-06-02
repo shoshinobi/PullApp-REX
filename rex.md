@@ -36,21 +36,21 @@ artboards:
     size: [302, 69]
     origin: [0.5, 0.5]
     stateMachines: [obTextSM]
+  - name: Burst
+    size: [310, 346]
+    origin: [0.5, 0.5]
   - name: Pack
     size: [300, 500]
     origin: [0.5, 0.5]
     stateMachines: [PackSM]
-  - name: cardFront
-    size: [250, 334]
-    origin: [0, 0]
-    stateMachines: [CardFrontSM]
   - name: riptopSprite
     size: [1023, 216]
     origin: [0, 0]
     stateMachines: [State Machine 1]
-  - name: Burst
-    size: [310, 346]
-    origin: [0.5, 0.5]
+  - name: cardFront
+    size: [250, 334]
+    origin: [0, 0]
+    stateMachines: [CardFrontSM]
   - name: bubbleParticle
     size: [0, 0]
     origin: [0, 0]
