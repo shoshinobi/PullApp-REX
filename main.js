@@ -59,7 +59,7 @@ let onboardingActiveProp = null;
 
 const DEFAULT_PACK   = PACK_IMAGES.find(p => p.label === "PackGraphics_goldGreen");
 
-const DEFAULT_SPRITE = SPRITE_IMAGES[0];
+const DEFAULT_SPRITE = SPRITE_IMAGES[1];
 
 let carriedPackCount    = null;
 let carriedPackImage    = DEFAULT_PACK.path;
