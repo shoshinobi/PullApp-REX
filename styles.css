@@ -12,18 +12,10 @@ body {
   font-size: 14px;
 }
 
-#app {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  height: 100vh;
-  overflow: hidden;
-}
-
 #canvas-wrap {
   position: relative;
-  flex: 1;
-  min-width: 0;
+  width: 100vw;
+  height: 100vh;
   overflow: hidden;
 }
 
@@ -31,124 +23,6 @@ body {
   display: block;
   width: 100%;
   height: 100%;
-}
-
-/* ── Controls panel ── */
-#controls {
-  width: 308px; /* 28px toggle + 280px content */
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  overflow: hidden;
-  border-left: 1px solid #222;
-  transition: width 0.25s ease;
-}
-
-#controls.collapsed {
-  width: 28px;
-}
-
-#sidebar-toggle {
-  width: 28px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  border-right: 1px solid #222;
-  border-radius: 0;
-  color: #666;
-  cursor: pointer;
-  padding: 0;
-  transition: color 0.15s, background 0.15s;
-}
-
-#sidebar-toggle:hover {
-  color: #ccc;
-  background: #1a1a1a;
-  border-color: #444;
-}
-
-#sidebar-toggle svg {
-  transition: transform 0.25s ease;
-}
-
-#controls.collapsed #sidebar-toggle svg {
-  transform: rotate(180deg);
-}
-
-#controls-inner {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  padding: 20px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  opacity: 1;
-  transition: opacity 0.15s ease;
-}
-
-#controls.collapsed #controls-inner {
-  opacity: 0;
-  pointer-events: none;
-}
-
-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-h3 {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  color: #888;
-  padding-bottom: 6px;
-  border-bottom: 1px solid #333;
-}
-
-/* ── Image inputs ── */
-.img-label {
-  font-size: 11px;
-  color: #666;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  margin-top: 4px;
-}
-
-select {
-  background: #222;
-  border: 1px solid #444;
-  border-radius: 6px;
-  color: #eee;
-  padding: 7px 10px;
-  width: 100%;
-  cursor: pointer;
-}
-
-input[type="number"] {
-  background: #222;
-  border: 1px solid #444;
-  border-radius: 6px;
-  color: #eee;
-  padding: 7px 10px;
-  width: 100%;
-  font-size: 13px;
-}
-
-input[type="number"]:focus {
-  outline: none;
-  border-color: #666;
-}
-
-input[type="file"] {
-  color: #aaa;
-  font-size: 13px;
 }
 
 /* ── Toasts ── */
@@ -183,75 +57,6 @@ input[type="file"] {
   opacity: 1;
   transform: translateY(0);
 }
-
-/* ── Trigger buttons ── */
-#triggers {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-button {
-  background: #222;
-  border: 1px solid #444;
-  border-radius: 6px;
-  color: #eee;
-  padding: 8px 12px;
-  text-align: left;
-  cursor: pointer;
-  font-size: 13px;
-  transition: background .15s, border-color .15s;
-}
-
-button:hover  { background: #2a2a2a; border-color: #666; }
-button:active { background: #333; }
-
-/* ── Boolean rows ── */
-#booleans {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.bool-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 7px 0;
-  border-bottom: 1px solid #222;
-}
-
-.bool-row:last-child { border-bottom: none; }
-
-.bool-row label { color: #ccc; font-size: 13px; }
-
-/* Toggle switch */
-.toggle {
-  position: relative;
-  width: 36px;
-  height: 20px;
-  flex-shrink: 0;
-}
-.toggle input { opacity: 0; width: 0; height: 0; }
-.toggle-track {
-  position: absolute;
-  inset: 0;
-  background: #444;
-  border-radius: 20px;
-  cursor: pointer;
-  transition: background .2s;
-}
-.toggle-track::before {
-  content: '';
-  position: absolute;
-  width: 14px; height: 14px;
-  left: 3px; top: 3px;
-  background: #fff;
-  border-radius: 50%;
-  transition: transform .2s;
-}
-.toggle input:checked + .toggle-track { background: #4a90e2; }
-.toggle input:checked + .toggle-track::before { transform: translateX(16px); }
 
 /* ── Collection modal ── */
 .modal-overlay {
@@ -345,5 +150,14 @@ button:active { background: #333; }
   width: 100%;
   padding: 18px;
   text-align: center;
+  background: #222;
+  border: 1px solid #444;
   border-radius: 15px;
+  color: #eee;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background .15s, border-color .15s;
 }
+
+#modal-restart-btn:hover  { background: #2a2a2a; border-color: #666; }
+#modal-restart-btn:active { background: #333; }

@@ -8,7 +8,8 @@
       "WebFetch(domain:github.com)",
       "Bash(curl -s https://raw.githubusercontent.com/rive-app/rive-wasm/master/js/src/rive.ts)",
       "Read(//tmp/**)",
-      "WebFetch(domain:registry.npmjs.org)"
+      "WebFetch(domain:registry.npmjs.org)",
+      "Bash(curl -sI \"https://cdn.jsdelivr.net/npm/lil-gui@0.20\")"
     ]
   }
 }

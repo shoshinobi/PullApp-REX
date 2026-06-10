@@ -14,7 +14,20 @@ npx serve .
 python3 -m http.server 8080
 ```
 
-The test harness sidebar can be collapsed with the **›** toggle on its left edge, which is useful when testing on a narrow screen or mobile device.
+---
+
+## Test harness (lil-GUI)
+
+The harness panel appears in the top-right corner of the screen. It starts collapsed — click the **REX Harness** title bar to expand it. The panel has four folders:
+
+| Folder | Contents |
+|---|---|
+| **Images** | Pack and Card dropdowns to swap live textures |
+| **Config** | Starting section, current section display, rarity, pack count |
+| **Triggers** | Loading complete, Shake hero pack, Shake side packs, Restart |
+| **Settings** | Random Pack, Audio, Auto complete loading, Native Mobile, Degraded, Onboarding Active |
+
+Pack and card images can also be swapped programmatically by triggering the hidden file inputs `#pack-file-input`, `#sprite-file-input`, and `#card-file-input` in the DOM.
 
 ---
 
@@ -26,7 +39,7 @@ On launch the scene opens on a loading screen (`Loading` artboard, 400 × 800). 
 vmi.trigger("loadComplete").trigger();
 ```
 
-The **Auto complete loading** toggle in the harness sidebar fires this automatically on every load, so you never have to click it manually during development. Uncheck it when you need to inspect the loading state.
+The **Auto complete loading** toggle in the harness Settings folder fires this automatically after all external images have decoded, so you never have to click it manually during development. Uncheck it when you need to inspect the loading state.
 
 ---
 
@@ -40,10 +53,10 @@ The `MAIN` artboard (400 × 850, state machine `REX`) is the entry point for the
 
 ## Starting section
 
-The `section` enum on `MainVM` controls which part of the experience is active. The harness exposes two controls:
+The `section` enum on `MainVM` controls which part of the experience is active. The harness exposes two controls in the **Config** folder:
 
 - **Starting Section** — sets the initial `section` value written to the VM *before* `r.play()`, so the state machine's first frame starts in the correct state. Persists in `localStorage` across page refreshes. Supported values: `loading`, `rip`.
-- **Current Section** — updates the `section` enum on the live instance in real time. Read-only display also shows the current value as Rive drives it.
+- **Current Section** — updates the `section` enum on the live instance in real time. Also acts as a read-only display showing the value as Rive drives it.
 
 ---
 
@@ -55,6 +68,7 @@ After loading, the user is presented with a carousel of five packs. The center s
 - **Selecting** — fire `packSelected` on `MainVM` when the user confirms their choice. This transitions the scene from selection into the pack-opening flow.
 - **Shaking** — each pack slot exposes a `shake` trigger via its `PackVM`. The harness **Shake hero pack** button triggers `heroPack`; **Shake side packs** triggers `pack1`, `pack2`, `pack4`, and `pack5` simultaneously.
 - **Hover** — set `isHovered` on any `PackVM` to show the hover highlight. Drive it with pointer-enter and pointer-leave events. `packEdgeGlow` enables an additional edge glow effect on a given pack.
+- **Idle timer** — if the user does not interact for 5 seconds while in the carousel section, `shakeHeroPack` fires automatically. Any `pointerdown` event resets the timer.
 
 ---
 
@@ -64,11 +78,11 @@ Once a pack is selected it becomes `openPack` — the `PackVM` instance that dri
 
 ### Pack graphics
 
-`packGraphics` on `MainVM` is a data-bound image slot for the pack face texture. Swapping it updates the design shown across all pack slots simultaneously. The harness **Pack** dropdown pre-loads four colour variants; you can also upload any image via the file picker. The selected pack persists across restarts.
+`packGraphics` on `MainVM` is a data-bound image slot for the pack face texture. Swapping it updates the design shown across all pack slots simultaneously. The harness **Pack** dropdown in the Images folder pre-loads four colour variants. Selecting a pack automatically loads its matched sprite overlay — the two are always kept in sync.
 
 ### Sprite image
 
-`topSpriteImg` on `MainVM` is a data-bound image slot for the sprite overlay shown during the reveal. The harness **Sprite** dropdown pre-loads four variants from `img/sprites/` (Blue, Green, Red, Yellow); you can also upload any image via the file picker. The selection persists across restarts.
+`topSpriteImg` on `MainVM` is a data-bound image slot for the sprite overlay shown during the reveal. The sprite is linked to whichever pack is active and updated automatically whenever the pack changes — no separate control is needed.
 
 ### Rip interaction
 
@@ -91,17 +105,17 @@ vmi.image("cardImage").value = img;
 img.unref();
 ```
 
-The harness **Card** dropdown pre-loads several card images from `img/cards/`; you can also upload any image via the file picker. On every restart (including after `nextPack`) a random card is auto-selected, always different from the previously shown card.
+The harness **Card** dropdown in the Images folder pre-loads several card images from `img/cards/`. On every restart (including after `nextPack`) a random card is auto-selected, always different from the previously shown card.
 
 ### Rarity
 
-`rarity` on `MainVM` is an enum with six values: `common`, `uncommon`, `rare`, `epic`, `legendary`, `grail`. Set this before `r.play()` to match the card being revealed. The harness **Rarity** dropdown updates it live.
+`rarity` on `MainVM` is an enum with six values: `common`, `uncommon`, `rare`, `epic`, `legendary`, `grail`. Set this before `r.play()` to match the card being revealed. The harness **Rarity** dropdown in the Config folder updates it live. When **Random Pack** is enabled, rarity is also randomised on every restart.
 
 `rarityColor` on `MainVM` is a colour property that can be used to tint rarity-specific UI elements to match the card tier.
 
 ### Pack count
 
-`packCount` on `MainVM` is an integer tracking how many packs remain in the session. The harness **Pack count** input sets the value directly. Each `nextPack` event automatically decrements it by one (minimum 0) and the value carries over across restarts.
+`packCount` on `MainVM` is an integer tracking how many packs remain in the session. The harness **Pack count** input in the Config folder sets the value directly; the default is `3`. Each `nextPack` event automatically decrements it by one (minimum 0) and the value carries over across restarts.
 
 ### nextPack flow
 
@@ -109,26 +123,32 @@ When Rive fires the `nextPack` trigger on `MainVM`, the harness:
 
 1. Records the current card in the session history.
 2. Decrements `packCount` by one.
-3. Picks a new random card for the next reveal.
+3. Picks a new random pack, sprite, card, and rarity (if **Random Pack** is enabled).
 4. Restarts the Rive instance so the new pack-opening sequence begins.
 
 ### Vault Collection
 
 When Rive fires the `viewInCollection` trigger on `MainVM`, the harness opens the **Vault Collection** modal — positioned over the canvas — showing every card revealed during the session. Each entry shows the card thumbnail, card name, and pack name. Once the collection is shown, no further cards are recorded.
 
-Clicking **Restart** inside the modal, clicking anywhere outside the modal, or clicking the sidebar **Restart** button all perform a full reset: session history is cleared, a new random card is selected, and the Rive instance restarts from the beginning.
+Clicking **Restart** inside the modal, clicking anywhere outside the modal, or using the **Restart** button in the harness Triggers folder all perform a full reset: session history is cleared, new random values are applied, and the Rive instance restarts from the beginning.
 
 ---
 
 ## Runtime flags
 
-The following boolean properties on `MainVM` should be set before `r.play()` so the state machine's first frame reflects the correct context. The harness exposes each as a toggle in the **Settings** section.
+The following boolean properties on `MainVM` should be set before `r.play()` so the state machine's first frame reflects the correct context. The harness exposes each as a toggle in the **Settings** folder.
 
 | Property | Default | Description |
 |---|---|---|
 | `isNativeMobile` | `false` | Set to `true` when running inside a native mobile wrapper (React Native, etc.) to enable mobile-specific layout and interaction paths. |
 | `isDegraded` | `false` | Set to `true` to activate the degraded-mode visual fallback (reduced effects for lower-end devices). |
 | `onboardingActive` | `true` | Set to `false` once the user has completed onboarding to skip the onboarding overlay. Persists in `localStorage`. |
+
+---
+
+## Random Pack mode
+
+The **Random Pack** toggle in the harness Settings folder controls all session randomisation. When enabled (default), every restart picks a new pack colour, matched sprite overlay, card, and rarity automatically. Disable it to lock in specific values via the Images and Config folder controls.
 
 ---
 
@@ -171,4 +191,4 @@ r.volume = 0; // mute
 r.volume = 1; // full
 ```
 
-The harness **Audio** toggle mutes and unmutes the running Rive instance in real time. Its state is preserved across restarts.
+The harness **Audio** toggle in the Settings folder mutes and unmutes the running Rive instance in real time. Its state is preserved across restarts.

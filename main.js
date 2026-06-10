@@ -9,13 +9,6 @@ const PACK_IMAGES = [
   { label: "PackGraphics_yellow",    path: "img/PackGraphics_yellow.png",    sprite: "img/sprites/YellowSprite.png" },
 ];
 
-const SPRITE_IMAGES = [
-  { label: "Blue",   path: "img/sprites/BlueSprite.png"   },
-  { label: "Green",  path: "img/sprites/GreenSprite.png"  },
-  { label: "Red",    path: "img/sprites/RedSprite.png"    },
-  { label: "Yellow", path: "img/sprites/YellowSprite.png" },
-];
-
 // Static VM image bindings — always loaded on every Rive init.
 // { prop: ViewModel image property name, path: file path (name + extension) }
 const STATIC_RIV_IMAGES = [
@@ -97,10 +90,17 @@ function applyRandomValues() {
 
 if (randomPackMode) applyRandomValues();
 
+// ── GUI state — shared between lil-GUI and Rive callbacks ─────────────────────
+
+const guiState = {};
+let packCtrl, cardCtrl, sectionCtrl, rarityCtrl, packCountCtrl;
+
 // ── Rive ──────────────────────────────────────────────────────────────────────
 
 let r = null;
-let riveReady = false;
+let riveReady      = false;
+let currentSection = null;
+let idleTimer      = null;
 
 function startRive() {
   riveReady = false;
@@ -121,7 +121,7 @@ function startRive() {
       // Write section before r.play() so the state machine's first frame sees it.
       const startSection = localStorage.getItem("startingSection") ?? "loading";
       vmi.enum("section").value = startSection;
-      document.getElementById("section-select").value = startSection;
+      guiState.currentSection = startSection;
 
       loadCompleteTrigger = vmi.trigger("loadComplete");
       shakeHeroTrigger    = vmi.viewModel("heroPack").trigger("shake");
@@ -132,35 +132,33 @@ function startRive() {
       packImageProp       = vmi.image("packGraphics");
       cardImageProp       = vmi.image("cardImage");
 
+      const imageLoads = [];
+
       if (carriedCardImage) {
-        loadImageProperty(cardImageProp, carriedCardImage.path);
-        document.getElementById("card-select").value = carriedCardImage.path;
+        imageLoads.push(loadImageProperty(cardImageProp, carriedCardImage.path));
+        guiState.card    = carriedCardImage.path;
         activeCardLabel  = carriedCardImage.label;
         activeCardSrc    = carriedCardImage.path;
         carriedCardImage = null;
       } else {
-        document.getElementById("card-select").value = "";
         activeCardLabel = null;
         activeCardSrc   = null;
       }
 
       if (carriedPackImage) {
-        loadImageProperty(packImageProp, carriedPackImage);
+        imageLoads.push(loadImageProperty(packImageProp, carriedPackImage));
         if (typeof carriedPackImage === "string") {
-          document.getElementById("pack-select").value = carriedPackImage;
+          guiState.pack   = carriedPackImage;
           activePackLabel = PACK_IMAGES.find(p => p.path === carriedPackImage)?.label ?? null;
         }
       }
 
       topSpriteImgProp = vmi.image("topSpriteImg");
       for (const { prop, path } of STATIC_RIV_IMAGES) {
-        loadImageProperty(vmi.image(prop), path);
+        imageLoads.push(loadImageProperty(vmi.image(prop), path));
       }
       if (carriedSpriteImage) {
-        loadImageProperty(topSpriteImgProp, carriedSpriteImage);
-        if (typeof carriedSpriteImage === "string") {
-          document.getElementById("sprite-select").value = carriedSpriteImage;
-        }
+        imageLoads.push(loadImageProperty(topSpriteImgProp, carriedSpriteImage));
       }
 
       sectionProp        = vmi.enum("section");
@@ -170,21 +168,33 @@ function startRive() {
       isNativeMobileProp = vmi.boolean("isNativeMobile");
 
       isDegradedProp       = vmi.boolean("isDegraded");
-      isDegradedProp.value = document.getElementById("toggle-degraded").checked;
+      isDegradedProp.value = guiState.degraded;
 
       const onboardingStored = localStorage.getItem("onboardingActive");
       const onboardingOn     = onboardingStored === null ? true : onboardingStored === "true";
-      document.getElementById("toggle-onboarding").checked = onboardingOn;
       onboardingActiveProp       = vmi.boolean("onboardingActive");
       onboardingActiveProp.value = onboardingOn;
 
-      document.getElementById("rarity-select").value = rarityProp.value;
-
       packCountProp.value = carriedPackCount;
-      document.getElementById("pack-count-input").value = packCountProp.value;
+
+      guiState.rarity    = rarityProp.value;
+      guiState.packCount = packCountProp.value;
+      guiState.onboarding = onboardingOn;
+      packCtrl?.updateDisplay();
+      cardCtrl?.updateDisplay();
+      rarityCtrl?.updateDisplay();
+      packCountCtrl?.updateDisplay();
 
       sectionProp.on(value => {
-        document.getElementById("section-select").value = value;
+        currentSection = value;
+        guiState.currentSection = value;
+        sectionCtrl?.updateDisplay();
+        if (value === "carousel") {
+          resetIdleTimer();
+        } else {
+          clearTimeout(idleTimer);
+          idleTimer = null;
+        }
       });
 
       nextPackFired = false;
@@ -199,7 +209,8 @@ function startRive() {
         const next = Math.max(0, packCountProp.value - 1);
         packCountProp.value = next;
         carriedPackCount = next;
-        document.getElementById("pack-count-input").value = next;
+        guiState.packCount = next;
+        packCountCtrl?.updateDisplay();
         if (randomPackMode) applyRandomValues();
         restart();
       });
@@ -212,11 +223,12 @@ function startRive() {
         showCollectionModal();
       });
 
-      r.volume = document.getElementById("toggle-audio").checked ? 1 : 0;
+      r.volume = guiState.audio ? 1 : 0;
       r.play("REX");
 
-      // Defer by one frame so the state machine can process its initial state first.
-      if (autoCompleteLoading) requestAnimationFrame(() => loadCompleteTrigger.trigger());
+      if (autoCompleteLoading) {
+        Promise.all(imageLoads).then(() => requestAnimationFrame(() => loadCompleteTrigger.trigger()));
+      }
     },
   });
 }
@@ -227,7 +239,18 @@ new ResizeObserver(() => { if (riveReady) r?.resizeDrawingSurfaceToCanvas(); }).
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+function resetIdleTimer() {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => shakeHeroTrigger?.trigger(), 5000);
+}
+
+document.addEventListener("pointerdown", () => {
+  if (currentSection === "carousel") resetIdleTimer();
+});
+
 function restart() {
+  clearTimeout(idleTimer);
+  idleTimer = null;
   r.cleanup();
   startRive();
 }
@@ -241,82 +264,15 @@ function fullReset() {
   restart();
 }
 
-// ── DOM listeners ─────────────────────────────────────────────────────────────
+// ── Modal listeners (remain as direct DOM, not GUI) ───────────────────────────
 
-document.getElementById("btn-restart").addEventListener("click", fullReset);
 document.getElementById("modal-restart-btn").addEventListener("click", fullReset);
 
 document.getElementById("collection-modal").addEventListener("click", (e) => {
   if (e.target === e.currentTarget) fullReset();
 });
 
-document.getElementById("btn-load-complete").addEventListener("click", () => {
-  loadCompleteTrigger?.trigger();
-});
-
-document.getElementById("btn-shake-pack3").addEventListener("click", () => {
-  shakeHeroTrigger?.trigger();
-});
-
-document.getElementById("btn-shake-pack2-4").addEventListener("click", () => {
-  shakeSide1Trigger?.trigger();
-  shakeSide2Trigger?.trigger();
-  shakeSide4Trigger?.trigger();
-  shakeSide5Trigger?.trigger();
-});
-
-document.getElementById("toggle-audio").addEventListener("change", (e) => {
-  r.volume = e.target.checked ? 1 : 0;
-});
-
-document.getElementById("toggle-auto-load").addEventListener("change", (e) => {
-  autoCompleteLoading = e.target.checked;
-});
-
-document.getElementById("toggle-native-mobile").addEventListener("change", (e) => {
-  if (isNativeMobileProp) isNativeMobileProp.value = e.target.checked;
-});
-
-document.getElementById("toggle-degraded").addEventListener("change", (e) => {
-  if (isDegradedProp) isDegradedProp.value = e.target.checked;
-});
-
-document.getElementById("toggle-onboarding").addEventListener("change", (e) => {
-  localStorage.setItem("onboardingActive", e.target.checked);
-  if (onboardingActiveProp) onboardingActiveProp.value = e.target.checked;
-});
-
-document.getElementById("section-select").addEventListener("change", (e) => {
-  if (sectionProp) sectionProp.value = e.target.value;
-});
-
-document.getElementById("rarity-select").addEventListener("change", (e) => {
-  carriedRarity = e.target.value;
-  if (rarityProp) rarityProp.value = e.target.value;
-});
-
-document.getElementById("toggle-random-pack").addEventListener("change", (e) => {
-  randomPackMode = e.target.checked;
-});
-
-document.getElementById("pack-count-input").addEventListener("input", (e) => {
-  const val = Number(e.target.value);
-  carriedPackCount = val;
-  if (packCountProp) packCountProp.value = val;
-});
-
-document.getElementById("sidebar-toggle").addEventListener("click", () => {
-  document.getElementById("controls").classList.toggle("collapsed");
-});
-
-// Starting section persists in localStorage across page refreshes.
-const startSelect = document.getElementById("section-start-select");
-startSelect.value = localStorage.getItem("startingSection") ?? "loading";
-startSelect.addEventListener("change", (e) => {
-  localStorage.setItem("startingSection", e.target.value);
-});
-
-// ── Image controls ────────────────────────────────────────────────────────────
+// ── Image loader ──────────────────────────────────────────────────────────────
 
 async function loadImageProperty(prop, src) {
   const bytes = src instanceof File
@@ -326,54 +282,6 @@ async function loadImageProperty(prop, src) {
   prop.value = img;
   img.unref();
 }
-
-function setupImageControls(getProp, selectId, images, fileInputId, onSelect) {
-  const select = document.getElementById(selectId);
-  for (const { label, path } of images) {
-    const opt = document.createElement("option");
-    opt.value = path;
-    opt.textContent = label;
-    select.appendChild(opt);
-  }
-  select.addEventListener("change", () => {
-    const prop = getProp();
-    if (select.value && prop) {
-      loadImageProperty(prop, select.value);
-      onSelect?.(select.value);
-    }
-  });
-  document.getElementById(fileInputId).addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    const prop = getProp();
-    if (!file || !prop) return;
-    loadImageProperty(prop, file);
-    onSelect?.(file);
-  });
-}
-
-setupImageControls(
-  () => packImageProp, "pack-select", PACK_IMAGES, "pack-file-input",
-  (src) => {
-    carriedPackImage = src;
-    activePackLabel  = PACK_IMAGES.find(p => p.path === src)?.label
-                       ?? (src instanceof File ? src.name : null);
-  }
-);
-
-setupImageControls(
-  () => topSpriteImgProp, "sprite-select", SPRITE_IMAGES, "sprite-file-input",
-  (src) => { carriedSpriteImage = src; }
-);
-
-setupImageControls(
-  () => cardImageProp, "card-select", CARD_IMAGES, "card-file-input",
-  (src) => {
-    const entry     = CARD_IMAGES.find(c => c.path === src);
-    activeCardLabel = entry?.label ?? (src instanceof File ? src.name : null);
-    activeCardSrc   = src instanceof File ? URL.createObjectURL(src) : src;
-    if (typeof src === "string") localStorage.setItem("lastCardPath", src);
-  }
-);
 
 // ── Collection modal ──────────────────────────────────────────────────────────
 
@@ -418,6 +326,114 @@ function showCollectionModal() {
 function hideCollectionModal() {
   document.getElementById("collection-modal").setAttribute("hidden", "");
 }
+
+// ── lil-GUI ───────────────────────────────────────────────────────────────────
+
+const packOptions = Object.fromEntries(PACK_IMAGES.map(p => [p.label, p.path]));
+const cardOptions = Object.fromEntries(CARD_IMAGES.map(c => [c.label, c.path]));
+const rarityOptions = Object.fromEntries(RARITY_VALUES.map(r => [r[0].toUpperCase() + r.slice(1), r]));
+
+// Seed initial guiState from current carried values (onLoad populates these on restart)
+guiState.pack = typeof carriedPackImage === "string" ? carriedPackImage : PACK_IMAGES[0].path;
+guiState.card = carriedCardImage?.path ?? CARD_IMAGES[0].path;
+guiState.startingSection = localStorage.getItem("startingSection") ?? "loading";
+guiState.currentSection  = "loading";
+guiState.rarity          = carriedRarity ?? "common";
+guiState.packCount       = carriedPackCount;
+guiState.randomPack      = randomPackMode;
+guiState.audio           = true;
+guiState.autoComplete    = autoCompleteLoading;
+guiState.nativeMobile    = false;
+guiState.degraded        = false;
+guiState.onboarding      = true;
+
+const gui = new lil.GUI({ title: "REX Settings" });
+gui.close();
+
+// Images
+const imgFolder = gui.addFolder("Images");
+
+packCtrl = imgFolder.add(guiState, "pack", packOptions).name("Pack")
+  .onChange(path => {
+    const linked     = PACK_IMAGES.find(p => p.path === path);
+    carriedPackImage = path;
+    activePackLabel  = linked?.label ?? null;
+    if (linked) {
+      carriedSpriteImage = linked.sprite;
+      if (topSpriteImgProp) loadImageProperty(topSpriteImgProp, linked.sprite);
+    }
+    if (packImageProp) loadImageProperty(packImageProp, path);
+  });
+
+cardCtrl = imgFolder.add(guiState, "card", cardOptions).name("Card")
+  .onChange(path => {
+    const entry     = CARD_IMAGES.find(c => c.path === path);
+    activeCardLabel = entry?.label ?? null;
+    activeCardSrc   = path;
+    if (typeof path === "string") localStorage.setItem("lastCardPath", path);
+    if (cardImageProp) loadImageProperty(cardImageProp, path);
+  });
+
+document.getElementById("pack-file-input").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  carriedPackImage = file;
+  activePackLabel  = file.name;
+  if (packImageProp) loadImageProperty(packImageProp, file);
+});
+
+document.getElementById("sprite-file-input").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  carriedSpriteImage = file;
+  if (topSpriteImgProp) loadImageProperty(topSpriteImgProp, file);
+});
+
+document.getElementById("card-file-input").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  activeCardLabel = file.name;
+  activeCardSrc   = URL.createObjectURL(file);
+  if (cardImageProp) loadImageProperty(cardImageProp, file);
+});
+
+// Config
+const cfgFolder = gui.addFolder("Config");
+
+cfgFolder.add(guiState, "startingSection", { Loading: "loading", Rip: "rip" })
+  .name("Starting section")
+  .onChange(v => localStorage.setItem("startingSection", v));
+
+sectionCtrl = cfgFolder.add(guiState, "currentSection", {
+  Loading: "loading", Carousel: "carousel", Rip: "rip", Cover: "cover", Reveal: "reveal",
+}).name("Current section").onChange(v => { if (sectionProp) sectionProp.value = v; });
+
+rarityCtrl = cfgFolder.add(guiState, "rarity", rarityOptions).name("Rarity")
+  .onChange(v => { carriedRarity = v; if (rarityProp) rarityProp.value = v; });
+
+packCountCtrl = cfgFolder.add(guiState, "packCount", 0, 99, 1).name("Pack count")
+  .onChange(v => { carriedPackCount = v; if (packCountProp) packCountProp.value = v; });
+
+// Triggers
+const trgFolder = gui.addFolder("Triggers");
+trgFolder.add({ fn: () => loadCompleteTrigger?.trigger()                            }, "fn").name("Loading complete");
+trgFolder.add({ fn: () => shakeHeroTrigger?.trigger()                               }, "fn").name("Shake hero pack");
+trgFolder.add({ fn: () => { shakeSide1Trigger?.trigger(); shakeSide2Trigger?.trigger();
+                             shakeSide4Trigger?.trigger(); shakeSide5Trigger?.trigger(); }
+              }, "fn").name("Shake side packs");
+trgFolder.add({ fn: () => fullReset()                                               }, "fn").name("Restart");
+
+// Settings
+const setFolder = gui.addFolder("Settings");
+setFolder.add(guiState, "randomPack"   ).name("Random Pack"           ).onChange(v => { randomPackMode    = v; });
+setFolder.add(guiState, "audio"        ).name("Audio"                 ).onChange(v => { if (r) r.volume = v ? 1 : 0; });
+setFolder.add(guiState, "autoComplete" ).name("Auto complete loading" ).onChange(v => { autoCompleteLoading = v; });
+setFolder.add(guiState, "nativeMobile" ).name("Native Mobile"         ).onChange(v => { if (isNativeMobileProp)   isNativeMobileProp.value   = v; });
+setFolder.add(guiState, "degraded"     ).name("Degraded"              ).onChange(v => { if (isDegradedProp)       isDegradedProp.value       = v; });
+setFolder.add(guiState, "onboarding"   ).name("Onboarding Active"     ).onChange(v => {
+  localStorage.setItem("onboardingActive", v);
+  if (onboardingActiveProp) onboardingActiveProp.value = v;
+});
 
 // ── Toasts ────────────────────────────────────────────────────────────────────
 
