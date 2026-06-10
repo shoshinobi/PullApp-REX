@@ -20,6 +20,14 @@ artboards:
     size: [0, 0]
     origin: [0, 0]
     stateMachines: [State Machine 1]
+  - name: HoldCard
+    size: [250, 334]
+    origin: [0, 0]
+    stateMachines: [HoldCardSM]
+  - name: edgeFX_lines
+    size: [390, 512]
+    origin: [0, 0]
+    stateMachines: [State Machine 1]
   - name: starParticle
     size: [0, 0]
     origin: [0, 0]
@@ -32,25 +40,33 @@ artboards:
     size: [0, 0]
     origin: [0, 0]
     stateMachines: [State Machine 1]
+  - name: swirlFX
+    size: [270, 540]
+    origin: [0, 0]
+    stateMachines: [State Machine 1]
+  - name: edgeFXsprite
+    size: [374, 550]
+    origin: [0, 0]
+    stateMachines: [State Machine 1]
   - name: Onboarding Text
     size: [302, 69]
     origin: [0.5, 0.5]
     stateMachines: [obTextSM]
-  - name: Burst
-    size: [310, 346]
-    origin: [0.5, 0.5]
   - name: Pack
     size: [300, 500]
     origin: [0.5, 0.5]
     stateMachines: [PackSM]
-  - name: riptopSprite
-    size: [1023, 216]
-    origin: [0, 0]
-    stateMachines: [State Machine 1]
   - name: cardFront
     size: [250, 334]
     origin: [0, 0]
     stateMachines: [CardFrontSM]
+  - name: riptopSprite
+    size: [1023, 216]
+    origin: [0, 0]
+    stateMachines: [State Machine 1]
+  - name: Burst
+    size: [310, 346]
+    origin: [0.5, 0.5]
   - name: bubbleParticle
     size: [0, 0]
     origin: [0, 0]
@@ -66,8 +82,13 @@ artboards:
 viewModels:
   - name: MainVM
     properties:
-      - { name: isDegraded, type: boolean }
+      - { name: imgEdgeFXlines, type: image }
+      - { name: imgEdgeFXwaves, type: image }
+      - { name: imgSwirlFX, type: image }
       - { name: loadComplete, type: trigger }
+      - { name: propertyOfHoldCycleVM, type: viewModel }
+      - { name: cardHold, type: trigger }
+      - { name: isDegraded, type: boolean }
       - { name: packCount, type: number }
       - { name: rarity, type: enum, enum: Rarity }
       - { name: packGraphics, type: image }
@@ -115,6 +136,13 @@ viewModels:
       - { name: onRightSide, type: boolean }
       - { name: onLeftSide, type: boolean }
     instances: [Instance]
+  - name: HoldCycleVM
+    properties:
+      - { name: holdCycleEdgeFX, type: boolean }
+      - { name: startHoldCycleEdgeFX, type: trigger }
+      - { name: startHoldCycle, type: trigger }
+      - { name: endHoldCycle, type: trigger }
+    instances: [Instance]
   - name: OnboardingVM
     properties:
       - { name: fadeIn, type: trigger }
@@ -128,12 +156,15 @@ viewModels:
     instances: [pack select, handPull, handPoint, handSwipe, cover card, pack rip]
   - name: CardVM
     properties:
+      - { name: edgeFX, type: trigger }
+      - { name: swirl, type: trigger }
       - { name: flash, type: trigger }
       - { name: revealed, type: trigger }
       - { name: glare, type: number }
     instances: [Instance]
   - name: RipVM
     properties:
+      - { name: startEdgeFXlines, type: trigger }
       - { name: readyToDrop, type: boolean }
       - { name: coverDragging, type: boolean }
       - { name: cardDrop, type: trigger }
@@ -183,14 +214,14 @@ viewModels:
       - { name: btnText, type: string }
       - { name: isClicked, type: trigger }
       - { name: isHovered, type: boolean }
-    instances: [skip, viewInCollection, next, RadialStreaks Instance, Onboarding Hand Instance, Onboarding Hand Instance]
+    instances: [skip, viewInCollection, next, RadialStreaks Instance, Onboarding Hand Instance, Onboarding Hand Instance, HoldCard Instance]
 enums:
   - name: Rarity
     values: [common, uncommon, rare, epic, legendary, grail]
   - name: Section
-    values: [loading, carousel, rip, cover, reveal]
+    values: [loading, carousel, rip, cover, hold, reveal]
 assets:
-  images: [PackMockup_Lighting.png, PackMockup_Blank.png, PackGraphics_goldGreen.png, Charizard.png, cardFront.png, GreenSprite.png, charizard.png]
+  images: [PackMockup_Lighting.png, PackMockup_Blank.png, cardFront.png]
   fonts: [Roboto Flex.ttf, Roboto.ttf]
   audio: [skip3 clip.wav, packOpen12.wav, packOpen.wav, cardReveal0.wav, coverCardOutImpact.wav, idleBGloop0.wav, heartbeat.wav, rippingloop2.wav, packSelect5.wav, carouselFormation.wav, swipe2.wav, legendary1.wav, legendary2.wav, common2.wav, rare.wav, uncommon.wav, grail1.wav, skip3.wav, music3.wav, swipe1.wav]
 ---

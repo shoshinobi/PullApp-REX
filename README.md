@@ -132,6 +132,22 @@ The following boolean properties on `MainVM` should be set before `r.play()` so 
 
 ---
 
+## FX images
+
+Three effect spritesheets are data-bound to `MainVM` and loaded automatically on every Rive init. To swap a file or add a new binding, edit `STATIC_RIV_IMAGES` at the top of `main.js`:
+
+```js
+const STATIC_RIV_IMAGES = [
+  { prop: "imgEdgeFXlines", path: "img/sprites/edgeFX_lines.png" },
+  { prop: "imgEdgeFXwaves", path: "img/sprites/edgeFX_waves.png" },
+  { prop: "imgSwirlFX",     path: "img/sprites/swirlFX.png"      },
+];
+```
+
+Each entry maps a `MainVM` image property name (`prop`) to a file path (`path`). Files are fetched and decoded in parallel on load so the textures are ready before the first frame that needs them.
+
+---
+
 ## Background and particle layers
 
 The background effects are controlled through `BackgroundVM`, accessed via `MainVM.propertyOfBackgroundVM`. Three independent particle emitters can be toggled on or off:
@@ -148,13 +164,11 @@ Set `streaksFast` to `true` to accelerate the streak emitter. The radial burst t
 
 ## Audio
 
-> **Work in progress** — audio integration is not yet finalised. This section will be updated.
-
-The scene includes several bundled audio assets (whooshes, ambient loops, heartbeat, transitions). Volume can be muted globally via the Rive runtime:
+The scene includes several bundled audio assets (whooshes, ambient loops, heartbeat, transitions). Volume is controlled globally via the Rive runtime:
 
 ```js
 r.volume = 0; // mute
 r.volume = 1; // full
 ```
 
-The harness **Audio** toggle mutes and unmutes the running Rive instance in real time. Its state is preserved across restarts so the file resumes at the same volume level. Per-event audio triggering and per-layer volume control will be documented here once the integration is complete.
+The harness **Audio** toggle mutes and unmutes the running Rive instance in real time. Its state is preserved across restarts.

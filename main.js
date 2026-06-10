@@ -3,10 +3,10 @@ const canvas = document.getElementById("rive-canvas");
 // ── Image data ────────────────────────────────────────────────────────────────
 
 const PACK_IMAGES = [
-  { label: "PackGraphics_blue",      path: "img/PackGraphics_blue.png" },
-  { label: "PackGraphics_goldGreen", path: "img/PackGraphics_goldGreen.png" },
-  { label: "PackGraphics_red",       path: "img/PackGraphics_red.png" },
-  { label: "PackGraphics_yellow",    path: "img/PackGraphics_yellow.png" },
+  { label: "PackGraphics_blue",      path: "img/PackGraphics_blue.png",      sprite: "img/sprites/BlueSprite.png"   },
+  { label: "PackGraphics_goldGreen", path: "img/PackGraphics_goldGreen.png", sprite: "img/sprites/GreenSprite.png"  },
+  { label: "PackGraphics_red",       path: "img/PackGraphics_red.png",       sprite: "img/sprites/RedSprite.png"    },
+  { label: "PackGraphics_yellow",    path: "img/PackGraphics_yellow.png",    sprite: "img/sprites/YellowSprite.png" },
 ];
 
 const SPRITE_IMAGES = [
@@ -14,6 +14,14 @@ const SPRITE_IMAGES = [
   { label: "Green",  path: "img/sprites/GreenSprite.png"  },
   { label: "Red",    path: "img/sprites/RedSprite.png"    },
   { label: "Yellow", path: "img/sprites/YellowSprite.png" },
+];
+
+// Static VM image bindings — always loaded on every Rive init.
+// { prop: ViewModel image property name, path: file path (name + extension) }
+const STATIC_RIV_IMAGES = [
+  { prop: "imgEdgeFXlines", path: "img/sprites/edgeFX_lines.png" },
+  { prop: "imgEdgeFXwaves", path: "img/sprites/edgeFX_waves.png"  },
+  { prop: "imgSwirlFX",     path: "img/sprites/swirlFX.png"       },
 ];
 
 const CARD_IMAGES = [
@@ -25,6 +33,11 @@ const CARD_IMAGES = [
   { label: "Mega Meganium EX", path: "img/cards/Mega Meganium EX.png" },
   { label: "Voltorb",          path: "img/cards/Voltorb.jpeg" },
 ];
+
+const RARITY_VALUES = ["common", "uncommon", "rare", "epic", "legendary", "grail"];
+
+function randomPack()   { return PACK_IMAGES[Math.floor(Math.random() * PACK_IMAGES.length)]; }
+function randomRarity() { return RARITY_VALUES[Math.floor(Math.random() * RARITY_VALUES.length)]; }
 
 // Picks a card different from the last shown. Persists last choice in localStorage
 // so the exclusion survives page refreshes.
@@ -57,28 +70,40 @@ let onboardingActiveProp = null;
 
 // ── Session state — persists across restarts ──────────────────────────────────
 
-const DEFAULT_PACK   = PACK_IMAGES.find(p => p.label === "PackGraphics_goldGreen");
+let randomPackMode = true;
 
-const DEFAULT_SPRITE = SPRITE_IMAGES[1];
-
-let carriedPackCount    = null;
-let carriedPackImage    = DEFAULT_PACK.path;
-let carriedSpriteImage  = DEFAULT_SPRITE.path;
-let carriedCardImage    = randomCard();
+let carriedPackCount   = 3;
+let carriedPackImage   = null;
+let carriedSpriteImage = null;
+let carriedRarity      = null;
+let carriedCardImage   = null;
 let autoCompleteLoading = true;
 
-let activeCardLabel  = null;
-let activeCardSrc    = null;
-let activePackLabel  = DEFAULT_PACK.label;
+let activeCardLabel = null;
+let activeCardSrc   = null;
+let activePackLabel = null;
 let cardHistory      = [];
 let collectionViewed = false;
 let nextPackFired    = false;
 
+function applyRandomValues() {
+  const pack = randomPack();
+  carriedPackImage   = pack.path;
+  carriedSpriteImage = pack.sprite;
+  activePackLabel    = pack.label;
+  carriedCardImage   = randomCard();
+  carriedRarity      = randomRarity();
+}
+
+if (randomPackMode) applyRandomValues();
+
 // ── Rive ──────────────────────────────────────────────────────────────────────
 
 let r = null;
+let riveReady = false;
 
 function startRive() {
+  riveReady = false;
   r = new rive.Rive({
     src: "rex.riv",
     canvas,
@@ -88,6 +113,7 @@ function startRive() {
     stateMachines: "REX",
     layout: new rive.Layout({ fit: rive.Fit.Layout }),
     onLoad() {
+      riveReady = true;
       r.resizeDrawingSurfaceToCanvas();
 
       const vmi = r.viewModelInstance;
@@ -127,6 +153,9 @@ function startRive() {
       }
 
       topSpriteImgProp = vmi.image("topSpriteImg");
+      for (const { prop, path } of STATIC_RIV_IMAGES) {
+        loadImageProperty(vmi.image(prop), path);
+      }
       if (carriedSpriteImage) {
         loadImageProperty(topSpriteImgProp, carriedSpriteImage);
         if (typeof carriedSpriteImage === "string") {
@@ -134,21 +163,24 @@ function startRive() {
         }
       }
 
-      sectionProp   = vmi.enum("section");
+      sectionProp        = vmi.enum("section");
       rarityProp         = vmi.enum("rarity");
+      if (carriedRarity) rarityProp.value = carriedRarity;
       packCountProp      = vmi.number("packCount");
       isNativeMobileProp = vmi.boolean("isNativeMobile");
-      isDegradedProp           = vmi.boolean("isDegraded");
-      isDegradedProp.value     = document.getElementById("toggle-degraded").checked;
+
+      isDegradedProp       = vmi.boolean("isDegraded");
+      isDegradedProp.value = document.getElementById("toggle-degraded").checked;
+
       const onboardingStored = localStorage.getItem("onboardingActive");
       const onboardingOn     = onboardingStored === null ? true : onboardingStored === "true";
       document.getElementById("toggle-onboarding").checked = onboardingOn;
-      onboardingActiveProp         = vmi.boolean("onboardingActive");
-      onboardingActiveProp.value   = onboardingOn;
+      onboardingActiveProp       = vmi.boolean("onboardingActive");
+      onboardingActiveProp.value = onboardingOn;
 
       document.getElementById("rarity-select").value = rarityProp.value;
 
-      if (carriedPackCount !== null) packCountProp.value = carriedPackCount;
+      packCountProp.value = carriedPackCount;
       document.getElementById("pack-count-input").value = packCountProp.value;
 
       sectionProp.on(value => {
@@ -168,7 +200,7 @@ function startRive() {
         packCountProp.value = next;
         carriedPackCount = next;
         document.getElementById("pack-count-input").value = next;
-        carriedCardImage = randomCard();
+        if (randomPackMode) applyRandomValues();
         restart();
       });
 
@@ -191,7 +223,7 @@ function startRive() {
 
 startRive();
 
-new ResizeObserver(() => r?.resizeDrawingSurfaceToCanvas()).observe(canvas);
+new ResizeObserver(() => { if (riveReady) r?.resizeDrawingSurfaceToCanvas(); }).observe(canvas);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -205,7 +237,7 @@ function fullReset() {
   hideCollectionModal();
   cardHistory      = [];
   collectionViewed = false;
-  carriedCardImage = randomCard();
+  if (randomPackMode) applyRandomValues();
   restart();
 }
 
@@ -259,7 +291,12 @@ document.getElementById("section-select").addEventListener("change", (e) => {
 });
 
 document.getElementById("rarity-select").addEventListener("change", (e) => {
+  carriedRarity = e.target.value;
   if (rarityProp) rarityProp.value = e.target.value;
+});
+
+document.getElementById("toggle-random-pack").addEventListener("change", (e) => {
+  randomPackMode = e.target.checked;
 });
 
 document.getElementById("pack-count-input").addEventListener("input", (e) => {
