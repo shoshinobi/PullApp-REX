@@ -25,7 +25,7 @@ The harness panel appears in the top-right corner of the screen. It starts colla
 | **Images** | Pack and Card dropdowns to swap live textures |
 | **Config** | Starting section, current section display, rarity, pack count |
 | **Triggers** | Loading complete, Shake hero pack, Shake side packs, Restart |
-| **Settings** | Random Pack, Audio, Auto complete loading, Native Mobile, Degraded, Degraded GPU, Onboarding Active |
+| **Settings** | Sprite format, Random Pack, Audio, Auto complete loading, Native Mobile, Degraded, Degraded GPU, Onboarding Active |
 
 Pack and card images can also be swapped programmatically by triggering the hidden file inputs `#pack-file-input`, `#sprite-file-input`, and `#card-file-input` in the DOM.
 
@@ -188,19 +188,45 @@ The **Random Pack** toggle in the harness Settings folder controls all session r
 
 ---
 
+## Sprite format
+
+All sprite images (color pack overlays and FX sheets) are available in three formats under `img/sprites/`:
+
+| Format | Folder | Notes |
+|---|---|---|
+| PNG | `png/` | Original, uncompressed |
+| PNG Compressed | `png compressed/` | ~4× smaller than standard PNG; best overall size |
+| WebP | `webp/` | Comparable to PNG Compressed for color sprites; larger for FX sheets |
+
+The active format is selected via the **Sprite format** dropdown in the harness Settings folder. Changing it immediately re-fetches all sprite VM props at the new paths — no restart needed. The default is **PNG Compressed**.
+
+To add a new format variant, add a folder under `img/sprites/`, place identically-named files inside it, then add an entry to `SPRITE_FORMATS` in `main.js`:
+
+```js
+const SPRITE_FORMATS = {
+  "PNG":            { dir: "img/sprites/png/",            ext: ".png"  },
+  "PNG Compressed": { dir: "img/sprites/png compressed/", ext: ".png"  },
+  "WebP":           { dir: "img/sprites/webp/",           ext: ".webp" },
+};
+```
+
+Pack graphics (`img/PackGraphics_*.png`) and card images (`img/cards/`) have no format variants and are unaffected by this setting.
+
+---
+
 ## FX images
 
 Three effect spritesheets are data-bound to `MainVM` and loaded automatically on every Rive init. To swap a file or add a new binding, edit `STATIC_RIV_IMAGES` at the top of `main.js`:
 
 ```js
 const STATIC_RIV_IMAGES = [
-  { prop: "imgEdgeFXlines", path: "img/sprites/edgeFX_lines.png" },
-  { prop: "imgEdgeFXwaves", path: "img/sprites/edgeFX_waves.png" },
-  { prop: "imgSwirlFX",     path: "img/sprites/swirlFX.png"      },
+  { prop: "imgEdgeFXlines", file: "edgeFX_lines" },
+  { prop: "imgEdgeFXwaves", file: "edgeFX_waves"  },
+  { prop: "imgSwirlFX",     file: "swirlFX"       },
 ];
 ```
 
-Each entry maps a `MainVM` image property name (`prop`) to a file path (`path`). Files are fetched and decoded in parallel on load so the textures are ready before the first frame that needs them.
+Each entry maps a `MainVM` image property name (`prop`) to a bare sprite filename (`file`, no extension). The full path is built at load time using the active sprite format. Files are fetched and decoded in parallel so the textures are ready before the first frame that needs them.
 
 ---
 

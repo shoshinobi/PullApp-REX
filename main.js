@@ -2,19 +2,35 @@ const canvas = document.getElementById("rive-canvas");
 
 // ── Image data ────────────────────────────────────────────────────────────────
 
+// Sprite format variants — maps display label to subfolder and file extension.
+// Only affects sprites (img/sprites/); pack graphics and cards have no variants.
+const SPRITE_FORMATS = {
+  "PNG":            { dir: "img/sprites/png/",            ext: ".png"  },
+  "PNG Compressed": { dir: "img/sprites/png compressed/", ext: ".png"  },
+  "WebP":           { dir: "img/sprites/webp/",           ext: ".webp" },
+};
+
+let spriteFormat = "PNG Compressed";
+
+function spritePath(filename) {
+  const { dir, ext } = SPRITE_FORMATS[spriteFormat];
+  return dir + filename + ext;
+}
+
+// sprite field is a bare filename — full path is built via spritePath() at load time.
 const PACK_IMAGES = [
-  { label: "PackGraphics_blue",      path: "img/PackGraphics_blue.png",      sprite: "img/sprites/BlueSprite.png"   },
-  { label: "PackGraphics_goldGreen", path: "img/PackGraphics_goldGreen.png", sprite: "img/sprites/GreenSprite.png"  },
-  { label: "PackGraphics_red",       path: "img/PackGraphics_red.png",       sprite: "img/sprites/RedSprite.png"    },
-  { label: "PackGraphics_yellow",    path: "img/PackGraphics_yellow.png",    sprite: "img/sprites/YellowSprite.png" },
+  { label: "PackGraphics_blue",      path: "img/PackGraphics_blue.png",      sprite: "BlueSprite"   },
+  { label: "PackGraphics_goldGreen", path: "img/PackGraphics_goldGreen.png", sprite: "GreenSprite"  },
+  { label: "PackGraphics_red",       path: "img/PackGraphics_red.png",       sprite: "RedSprite"    },
+  { label: "PackGraphics_yellow",    path: "img/PackGraphics_yellow.png",    sprite: "YellowSprite" },
 ];
 
 // Static VM image bindings — always loaded on every Rive init.
-// { prop: ViewModel image property name, path: file path (name + extension) }
+// { prop: ViewModel image property name, file: bare sprite filename without extension }
 const STATIC_RIV_IMAGES = [
-  { prop: "imgEdgeFXlines", path: "img/sprites/edgeFX_lines.png" },
-  { prop: "imgEdgeFXwaves", path: "img/sprites/edgeFX_waves.png"  },
-  { prop: "imgSwirlFX",     path: "img/sprites/swirlFX.png"       },
+  { prop: "imgEdgeFXlines", file: "edgeFX_lines" },
+  { prop: "imgEdgeFXwaves", file: "edgeFX_waves"  },
+  { prop: "imgSwirlFX",     file: "swirlFX"       },
 ];
 
 const CARD_IMAGES = [
@@ -201,11 +217,14 @@ function startRive() {
       }
 
       topSpriteImgProp = vmi.image("topSpriteImg");
-      for (const { prop, path } of STATIC_RIV_IMAGES) {
-        imageLoads.push(loadImageProperty(vmi.image(prop), path));
+      for (const { prop, file } of STATIC_RIV_IMAGES) {
+        imageLoads.push(loadImageProperty(vmi.image(prop), spritePath(file)));
       }
       if (carriedSpriteImage) {
-        imageLoads.push(loadImageProperty(topSpriteImgProp, carriedSpriteImage));
+        const src = typeof carriedSpriteImage === "string"
+          ? spritePath(carriedSpriteImage)
+          : carriedSpriteImage;
+        imageLoads.push(loadImageProperty(topSpriteImgProp, src));
       }
 
       sectionProp        = vmi.enum("section");
@@ -298,6 +317,17 @@ canvas.addEventListener("webglcontextlost", (e) => {
 canvas.addEventListener("webglcontextrestored", () => startRive());
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function reloadSprites() {
+  if (!r || !riveReady) return;
+  const vmi = r.viewModelInstance;
+  for (const { prop, file } of STATIC_RIV_IMAGES) {
+    loadImageProperty(vmi.image(prop), spritePath(file));
+  }
+  if (topSpriteImgProp && carriedSpriteImage && typeof carriedSpriteImage === "string") {
+    loadImageProperty(topSpriteImgProp, spritePath(carriedSpriteImage));
+  }
+}
 
 function resetIdleTimer() {
   clearTimeout(idleTimer);
@@ -398,6 +428,7 @@ guiState.pack = typeof carriedPackImage === "string" ? carriedPackImage : PACK_I
 guiState.card = carriedCardImage?.path ?? CARD_IMAGES[0].path;
 guiState.startingSection = localStorage.getItem("startingSection") ?? "loading";
 guiState.currentSection  = "loading";
+guiState.spriteFormat    = spriteFormat;
 guiState.rarity          = carriedRarity ?? "common";
 guiState.packCount       = carriedPackCount;
 guiState.randomPack      = randomPackMode;
@@ -421,7 +452,7 @@ packCtrl = imgFolder.add(guiState, "pack", packOptions).name("Pack")
     activePackLabel  = linked?.label ?? null;
     if (linked) {
       carriedSpriteImage = linked.sprite;
-      if (topSpriteImgProp) loadImageProperty(topSpriteImgProp, linked.sprite);
+      if (topSpriteImgProp) loadImageProperty(topSpriteImgProp, spritePath(linked.sprite));
     }
     if (packImageProp) loadImageProperty(packImageProp, path);
   });
@@ -486,6 +517,7 @@ trgFolder.add({ fn: () => fullReset()                                           
 
 // Settings
 const setFolder = gui.addFolder("Settings");
+setFolder.add(guiState, "spriteFormat", Object.keys(SPRITE_FORMATS)).name("Sprite format").onChange(v => { spriteFormat = v; reloadSprites(); });
 setFolder.add(guiState, "randomPack"   ).name("Random Pack"           ).onChange(v => { randomPackMode    = v; });
 setFolder.add(guiState, "audio"        ).name("Audio"                 ).onChange(v => { if (r) r.volume = v ? 1 : 0; });
 setFolder.add(guiState, "autoComplete" ).name("Auto complete loading" ).onChange(v => { autoCompleteLoading = v; });
