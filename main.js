@@ -102,6 +102,52 @@ let riveReady      = false;
 let currentSection = null;
 let idleTimer      = null;
 
+// Detects fill-rate-limited GPUs where capping DPR to 1 gives a large fps gain.
+// Only relevant on high-DPR screens — at DPR ≤ 1 there's nothing to cap.
+function detectDegradedGPU() {
+  if (window.devicePixelRatio <= 1) return false;
+  try {
+    const gl = document.createElement("canvas").getContext("webgl2")
+            || document.createElement("canvas").getContext("webgl");
+    if (gl) {
+      const ext = gl.getExtension("WEBGL_debug_renderer_info");
+      if (ext) {
+        const renderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL).toLowerCase();
+        // Known high-performance — leave DPR alone
+        if (/nvidia|geforce|rtx|gtx|quadro|radeon|rx \d|vega|navi|intel arc/.test(renderer)) return false;
+        if (/apple m\d/.test(renderer)) return false;
+        // Integrated / mobile GPUs — fill-rate limited at high DPR
+        if (/intel|mali|adreno|powervr|videocore/.test(renderer)) return true;
+      }
+    }
+  } catch (_) {}
+  // Fallback: low device memory on a high-DPR screen is a strong proxy
+  if (typeof navigator.deviceMemory !== "undefined" && navigator.deviceMemory < 4) return true;
+  return false;
+}
+
+let degradedGPU = detectDegradedGPU();
+
+// Caps devicePixelRatio at 1 for fill-rate-limited GPUs before calling resize —
+// reduces rendered pixels by up to 4× on high-DPI screens (e.g. Intel UHD, Mali).
+function resizeDrawingSurface(rInst) {
+  if (!degradedGPU || window.devicePixelRatio <= 1) {
+    rInst.resizeDrawingSurfaceToCanvas();
+    return;
+  }
+  const prev = Object.getOwnPropertyDescriptor(window, "devicePixelRatio");
+  if (!prev?.configurable) {
+    rInst.resizeDrawingSurfaceToCanvas();
+    return;
+  }
+  try {
+    Object.defineProperty(window, "devicePixelRatio", { value: 1, configurable: true });
+    rInst.resizeDrawingSurfaceToCanvas();
+  } finally {
+    Object.defineProperty(window, "devicePixelRatio", prev);
+  }
+}
+
 function startRive() {
   riveReady = false;
   r = new rive.Rive({
@@ -114,7 +160,7 @@ function startRive() {
     layout: new rive.Layout({ fit: rive.Fit.Layout }),
     onLoad() {
       riveReady = true;
-      r.resizeDrawingSurfaceToCanvas();
+      resizeDrawingSurface(r);
 
       const vmi = r.viewModelInstance;
 
@@ -235,7 +281,7 @@ function startRive() {
 
 startRive();
 
-new ResizeObserver(() => { if (riveReady) r?.resizeDrawingSurfaceToCanvas(); }).observe(canvas);
+new ResizeObserver(() => { if (riveReady && r) resizeDrawingSurface(r); }).observe(canvas);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -345,6 +391,7 @@ guiState.audio           = true;
 guiState.autoComplete    = autoCompleteLoading;
 guiState.nativeMobile    = false;
 guiState.degraded        = false;
+guiState.degradedGPU     = degradedGPU;
 guiState.onboarding      = true;
 
 const gui = new lil.GUI({ title: "REX Settings" });
@@ -429,7 +476,8 @@ setFolder.add(guiState, "randomPack"   ).name("Random Pack"           ).onChange
 setFolder.add(guiState, "audio"        ).name("Audio"                 ).onChange(v => { if (r) r.volume = v ? 1 : 0; });
 setFolder.add(guiState, "autoComplete" ).name("Auto complete loading" ).onChange(v => { autoCompleteLoading = v; });
 setFolder.add(guiState, "nativeMobile" ).name("Native Mobile"         ).onChange(v => { if (isNativeMobileProp)   isNativeMobileProp.value   = v; });
-setFolder.add(guiState, "degraded"     ).name("Degraded"              ).onChange(v => { if (isDegradedProp)       isDegradedProp.value       = v; });
+setFolder.add(guiState, "degraded"     ).name("Degraded"              ).onChange(v => { if (isDegradedProp) isDegradedProp.value = v; });
+setFolder.add(guiState, "degradedGPU"  ).name("Degraded GPU"           ).onChange(v => { degradedGPU = v; if (riveReady && r) resizeDrawingSurface(r); });
 setFolder.add(guiState, "onboarding"   ).name("Onboarding Active"     ).onChange(v => {
   localStorage.setItem("onboardingActive", v);
   if (onboardingActiveProp) onboardingActiveProp.value = v;
