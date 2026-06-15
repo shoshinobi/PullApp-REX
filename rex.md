@@ -28,6 +28,10 @@ artboards:
     size: [390, 512]
     origin: [0, 0]
     stateMachines: [State Machine 1]
+  - name: Rarity Text
+    size: [296, 160]
+    origin: [0.5, 0.5]
+    stateMachines: [State Machine 1]
   - name: starParticle
     size: [0, 0]
     origin: [0, 0]
@@ -40,33 +44,33 @@ artboards:
     size: [0, 0]
     origin: [0, 0]
     stateMachines: [State Machine 1]
-  - name: swirlFX
-    size: [270, 540]
-    origin: [0, 0]
-    stateMachines: [State Machine 1]
   - name: edgeFXsprite
     size: [374, 550]
+    origin: [0, 0]
+    stateMachines: [State Machine 1]
+  - name: swirlFX
+    size: [270, 540]
     origin: [0, 0]
     stateMachines: [State Machine 1]
   - name: Onboarding Text
     size: [302, 69]
     origin: [0.5, 0.5]
     stateMachines: [obTextSM]
+  - name: Burst
+    size: [310, 346]
+    origin: [0.5, 0.5]
   - name: Pack
     size: [300, 500]
     origin: [0.5, 0.5]
     stateMachines: [PackSM]
-  - name: cardFront
-    size: [250, 334]
-    origin: [0, 0]
-    stateMachines: [CardFrontSM]
   - name: riptopSprite
     size: [1023, 216]
     origin: [0, 0]
     stateMachines: [State Machine 1]
-  - name: Burst
-    size: [310, 346]
-    origin: [0.5, 0.5]
+  - name: cardFront
+    size: [250, 334]
+    origin: [0, 0]
+    stateMachines: [CardFrontSM]
   - name: bubbleParticle
     size: [0, 0]
     origin: [0, 0]
@@ -82,6 +86,7 @@ artboards:
 viewModels:
   - name: MainVM
     properties:
+      - { name: revealRarityType, type: trigger }
       - { name: imgEdgeFXlines, type: image }
       - { name: imgEdgeFXwaves, type: image }
       - { name: imgSwirlFX, type: image }
@@ -222,8 +227,8 @@ enums:
     values: [loading, carousel, rip, cover, hold, reveal]
 assets:
   images: [PackMockup_Lighting.png, PackMockup_Blank.png, cardFront.png]
-  fonts: [Roboto Flex.ttf, Roboto.ttf]
-  audio: [skip3 clip.wav, packOpen12.wav, packOpen.wav, cardReveal0.wav, coverCardOutImpact.wav, idleBGloop0.wav, heartbeat.wav, rippingloop2.wav, packSelect5.wav, carouselFormation.wav, swipe2.wav, legendary1.wav, legendary2.wav, common2.wav, rare.wav, uncommon.wav, grail1.wav, skip3.wav, music3.wav, swipe1.wav]
+  fonts: [Roboto Flex.ttf, Langar.ttf, Roboto.ttf]
+  audio: [skip3 clip.wav, packOpen12.wav, packOpen.wav, cardReveal0.wav, coverCardOutImpact.wav, idleBGloop0.wav, heartbeat.wav, rippingloop2.wav, packSelect5.wav, carouselFormation.wav, swipe2.wav, legendary1.wav, legendary2.wav, common2.wav, rare.wav, uncommon.wav, grail1.wav, skip3.wav, buildSFX.wav, music3.wav, swipe1.wav]
 ---
 
 ## Comments

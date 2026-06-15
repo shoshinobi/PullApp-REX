@@ -102,7 +102,8 @@ let riveReady      = false;
 let currentSection = null;
 let idleTimer      = null;
 
-// Detects fill-rate-limited GPUs where capping DPR to 1 gives a large fps gain.
+// Returns false only for proven high-performance GPUs; everything else (integrated,
+// mobile, or undetectable) defaults to true — safe for older / budget hardware.
 // Only relevant on high-DPR screens — at DPR ≤ 1 there's nothing to cap.
 function detectDegradedGPU() {
   if (window.devicePixelRatio <= 1) return false;
@@ -113,20 +114,20 @@ function detectDegradedGPU() {
       const ext = gl.getExtension("WEBGL_debug_renderer_info");
       if (ext) {
         const renderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL).toLowerCase();
-        // Known high-performance — leave DPR alone
         if (/nvidia|geforce|rtx|gtx|quadro|radeon|rx \d|vega|navi|intel arc/.test(renderer)) return false;
         if (/apple m\d/.test(renderer)) return false;
-        // Integrated / mobile GPUs — fill-rate limited at high DPR
-        if (/intel|mali|adreno|powervr|videocore/.test(renderer)) return true;
       }
     }
   } catch (_) {}
-  // Fallback: low device memory on a high-DPR screen is a strong proxy
-  if (typeof navigator.deviceMemory !== "undefined" && navigator.deviceMemory < 4) return true;
-  return false;
+  // Unknown or integrated GPU on a high-DPR screen — cap by default
+  return true;
 }
 
 let degradedGPU = detectDegradedGPU();
+
+// URL param overrides auto-detection: ?degradedGPU=1 or ?degradedGPU=false
+const _gpuParam = new URLSearchParams(window.location.search).get("degradedGPU");
+if (_gpuParam !== null) degradedGPU = _gpuParam !== "0" && _gpuParam !== "false";
 
 // Caps devicePixelRatio at 1 for fill-rate-limited GPUs before calling resize —
 // reduces rendered pixels by up to 4× on high-DPI screens (e.g. Intel UHD, Mali).

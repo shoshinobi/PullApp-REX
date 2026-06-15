@@ -25,7 +25,7 @@ The harness panel appears in the top-right corner of the screen. It starts colla
 | **Images** | Pack and Card dropdowns to swap live textures |
 | **Config** | Starting section, current section display, rarity, pack count |
 | **Triggers** | Loading complete, Shake hero pack, Shake side packs, Restart |
-| **Settings** | Random Pack, Audio, Auto complete loading, Native Mobile, Degraded, Onboarding Active |
+| **Settings** | Random Pack, Audio, Auto complete loading, Native Mobile, Degraded, Degraded GPU, Onboarding Active |
 
 Pack and card images can also be swapped programmatically by triggering the hidden file inputs `#pack-file-input`, `#sprite-file-input`, and `#card-file-input` in the DOM.
 
@@ -141,8 +141,44 @@ The following boolean properties on `MainVM` should be set before `r.play()` so 
 | Property | Default | Description |
 |---|---|---|
 | `isNativeMobile` | `false` | Set to `true` when running inside a native mobile wrapper (React Native, etc.) to enable mobile-specific layout and interaction paths. |
-| `isDegraded` | `false` | Set to `true` to activate the degraded-mode visual fallback (reduced effects for lower-end devices). |
+| `isDegraded` | `false` | Set to `true` to reduce visual complexity inside the Rive file — disables particle systems and other heavy effects. Independent of GPU rendering quality. |
 | `onboardingActive` | `true` | Set to `false` once the user has completed onboarding to skip the onboarding overlay. Persists in `localStorage`. |
+
+---
+
+## GPU performance
+
+On high-DPI screens (devicePixelRatio > 1), Rive's WebGL renderer draws up to 4× more pixels per frame than the CSS canvas size suggests. On fill-rate-limited GPUs — Intel integrated graphics, ARM Mali, older Adreno — this is the primary cause of jitter and dropped frames.
+
+### DPR cap
+
+The harness applies a rendering optimisation that temporarily caps `window.devicePixelRatio` to `1` before calling `resizeDrawingSurfaceToCanvas()`, reducing the WebGL pixel buffer to CSS-pixel resolution. This is independent of `isDegraded` — visual content inside the Rive file is unaffected; only the render resolution changes.
+
+### Auto-detection
+
+`detectDegradedGPU()` runs at startup and sets the initial state. It defaults to **on** for any GPU that cannot be identified as high-performance, making it safe for older and budget devices out of the box:
+
+| GPU family | Result |
+|---|---|
+| NVIDIA GeForce / Quadro | off — full DPR |
+| AMD Radeon | off — full DPR |
+| Intel Arc (discrete) | off — full DPR |
+| Apple M-series | off — full DPR |
+| Intel integrated, Mali, Adreno, PowerVR | on — DPR capped at 1 |
+| Unknown / renderer info unavailable | on — DPR capped at 1 |
+| Any GPU on a non-Retina screen (DPR ≤ 1) | off — nothing to cap |
+
+### URL parameter
+
+The `degradedGPU` URL parameter overrides auto-detection and is useful for sharing test links or for a native wrapper that already knows the device tier:
+
+```
+?degradedGPU=1      → force on
+?degradedGPU=false  → force off
+?degradedGPU=0      → force off
+```
+
+The harness **Degraded GPU** toggle in the Settings folder provides the same override at runtime without reloading.
 
 ---
 
