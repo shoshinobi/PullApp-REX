@@ -284,6 +284,19 @@ startRive();
 
 new ResizeObserver(() => { if (riveReady && r) resizeDrawingSurface(r); }).observe(canvas);
 
+// WebGL context can be reclaimed by the OS under memory pressure (Android, iOS,
+// low-memory Windows). Recover cleanly instead of leaving a black canvas.
+canvas.addEventListener("webglcontextlost", (e) => {
+  e.preventDefault();
+  clearTimeout(idleTimer);
+  idleTimer = null;
+  r?.cleanup();
+  r = null;
+  riveReady = false;
+});
+
+canvas.addEventListener("webglcontextrestored", () => startRive());
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function resetIdleTimer() {
