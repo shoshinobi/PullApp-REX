@@ -218,6 +218,17 @@ Set `streaksFast` to `true` to accelerate the streak emitter. The radial burst t
 
 ---
 
+## WebGL context loss
+
+The OS can reclaim the WebGL context under memory pressure — most commonly on Android, when an iOS tab backgrounds, or on low-memory Windows machines when the GPU driver resets under load. Without handling this, the canvas goes black and stays that way.
+
+The harness listens for both browser events on the canvas:
+
+- **`webglcontextlost`** — calls `e.preventDefault()` (required to signal that recovery is wanted), cancels the idle timer, cleans up the Rive instance, and resets `riveReady` so no other callbacks fire into the dead context.
+- **`webglcontextrestored`** — calls `startRive()` to reinitialise with the same carried values (pack, card, rarity) that were in play before the loss. This is a technical recovery, not a user restart, so no new random values are applied.
+
+---
+
 ## Audio
 
 The scene includes several bundled audio assets (whooshes, ambient loops, heartbeat, transitions). Volume is controlled globally via the Rive runtime:
