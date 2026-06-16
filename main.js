@@ -155,24 +155,31 @@ let degradedScale = 0.75;
 const _scaleParam = parseFloat(new URLSearchParams(window.location.search).get("renderScale"));
 if (!Number.isNaN(_scaleParam)) degradedScale = _scaleParam;
 
-// Shrinks the canvas's own CSS box to degradedScale and applies a counter
-// transform to stretch it back to fill its container visually. Rive then sees
-// a perfectly ordinary resize to a smaller box — the same code path as any
-// normal window resize — so its Fit: Layout recalculation is unaffected.
-// (Earlier versions patched window.devicePixelRatio instead, which interfered
-// with Rive's layout recalculation on resize — this avoids touching it at all.)
+// Native descriptor + value captured once, before any patching — every call
+// works from this known-good baseline regardless of call order or timing,
+// instead of re-querying window.devicePixelRatio (which may be mid-patch).
+const _nativeDPRDescriptor = Object.getOwnPropertyDescriptor(window, "devicePixelRatio");
+const _nativeDPR = window.devicePixelRatio;
+
+// Caps the effective devicePixelRatio at degradedScale before calling resize.
+// CSS size is untouched — the canvas's own paint-time upscale from a smaller
+// intrinsic resolution to its CSS size is cheap (no extra GPU compositing
+// layer), unlike a CSS transform: scale(), which forces layer promotion and
+// costs just as much fill rate as rendering at full resolution would.
 function resizeDrawingSurface(rInst) {
-  const scale = degradedGPU ? degradedScale : 1;
-  if (scale < 1) {
-    canvas.style.width     = `${scale * 100}%`;
-    canvas.style.height    = `${scale * 100}%`;
-    canvas.style.transform = `scale(${1 / scale})`;
-  } else {
-    canvas.style.width     = "";
-    canvas.style.height    = "";
-    canvas.style.transform = "";
+  const targetDPR = degradedGPU ? Math.min(_nativeDPR, degradedScale) : _nativeDPR;
+  if (targetDPR >= _nativeDPR || !_nativeDPRDescriptor?.configurable) {
+    rInst.resizeDrawingSurfaceToCanvas();
+    return;
   }
+  Object.defineProperty(window, "devicePixelRatio", { value: targetDPR, configurable: true });
   rInst.resizeDrawingSurfaceToCanvas();
+  // Restore on the next frame rather than synchronously — Rive's Fit: Layout
+  // recalculation may run slightly after this call returns, and should see
+  // the same DPR the buffer was just sized with.
+  requestAnimationFrame(() => {
+    Object.defineProperty(window, "devicePixelRatio", _nativeDPRDescriptor);
+  });
 }
 
 function startRive() {
@@ -311,8 +318,6 @@ function startRive() {
 
 startRive();
 
-// Observes canvasWrap, not canvas — resizeDrawingSurface mutates the canvas's own
-// size/transform, so observing canvas itself would create a feedback loop.
 new ResizeObserver(() => { if (riveReady && r) resizeDrawingSurface(r); }).observe(canvasWrap);
 
 // WebGL context can be reclaimed by the OS under memory pressure (Android, iOS,

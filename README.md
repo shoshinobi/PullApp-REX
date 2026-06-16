@@ -152,9 +152,11 @@ WebGL fill rate — how many pixels the GPU can shade per frame — is the prima
 
 ### Render scale
 
-The harness shrinks the canvas's own CSS box to a fraction of its container size, then applies a counter `transform: scale()` to stretch it back to fill the layout visually — the same technique as upscaling a lower-resolution video to fill its player. Rive then performs an entirely ordinary `resizeDrawingSurfaceToCanvas()` call against that smaller box: the same code path as any normal window resize, so its Fit: Layout recalculation behaves exactly as expected. This is independent of `isDegraded` — visual content inside the Rive file is unaffected; only the render resolution changes.
+The harness temporarily overrides `window.devicePixelRatio` before calling `resizeDrawingSurfaceToCanvas()`, shrinking the WebGL drawing buffer below its native resolution while the canvas's CSS size stays untouched. The browser upscales the smaller buffer to fill the canvas as a normal part of the canvas's own paint step — cheap, with no extra GPU compositing layer. This is independent of `isDegraded` — visual content inside the Rive file is unaffected; only the render resolution changes.
 
-(An earlier version of this feature worked by temporarily overriding `window.devicePixelRatio` before calling resize. That interfered with Rive's layout recalculation on resize and was replaced with the CSS-transform approach above.)
+The native descriptor and DPR value are captured once at startup, before any patching happens, so every resize call works from the same known-good baseline rather than re-reading a potentially already-patched value. The override is restored on the next animation frame rather than synchronously, giving Rive's Fit: Layout recalculation — which can run slightly after the resize call returns — a chance to see the same DPR the buffer was just sized with.
+
+(An intermediate version of this feature shrank the canvas's CSS box and applied a counter `transform: scale()` instead. That fixed a layout-resize regression but reintroduced the original performance problem: `transform` forces the canvas onto its own GPU compositing layer, and the compositor still has to fill the full output resolution when blitting that layer back to size — costing just as much fill rate as rendering at full resolution would have. The DPR-override approach avoids both problems.)
 
 The amount of reduction is controlled by `degradedScale` (default `0.75`, exposed in the harness as **Degraded scale**, range `0.4`–`1.0`). Since GPU fill rate scales with pixel count, this is a direct performance lever:
 
