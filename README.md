@@ -25,7 +25,7 @@ The harness panel appears in the top-right corner of the screen. It starts colla
 | **Images** | Pack and Card dropdowns to swap live textures |
 | **Config** | Starting section, current section display, rarity, pack count |
 | **Triggers** | Loading complete, Shake hero pack, Shake side packs, Restart |
-| **Settings** | Sprite format, Random Pack, Audio, Auto complete loading, Native Mobile, Degraded, Degraded GPU, Onboarding Active |
+| **Settings** | Sprite format, Random Pack, Audio, Auto complete loading, Native Mobile, Degraded, Degraded GPU, Degraded scale, Copy GPU link, Onboarding Active |
 
 Pack and card images can also be swapped programmatically by triggering the hidden file inputs `#pack-file-input`, `#sprite-file-input`, and `#card-file-input` in the DOM.
 
@@ -150,9 +150,19 @@ The following boolean properties on `MainVM` should be set before `r.play()` so 
 
 On high-DPI screens (devicePixelRatio > 1), Rive's WebGL renderer draws up to 4× more pixels per frame than the CSS canvas size suggests. On fill-rate-limited GPUs — Intel integrated graphics, ARM Mali, older Adreno — this is the primary cause of jitter and dropped frames.
 
-### DPR cap
+### Render scale
 
-The harness applies a rendering optimisation that temporarily caps `window.devicePixelRatio` to `1` before calling `resizeDrawingSurfaceToCanvas()`, reducing the WebGL pixel buffer to CSS-pixel resolution. This is independent of `isDegraded` — visual content inside the Rive file is unaffected; only the render resolution changes.
+The harness applies a rendering optimisation that temporarily overrides `window.devicePixelRatio` before calling `resizeDrawingSurfaceToCanvas()`, shrinking the WebGL drawing buffer below its native resolution. The canvas's CSS size is untouched — it still fills the layout exactly as before — the browser simply upscales the smaller buffer to fit, the same way a lower-resolution video is stretched to fill its player. This is independent of `isDegraded` — visual content inside the Rive file is unaffected; only the render resolution changes.
+
+The amount of reduction is controlled by `degradedScale` (default `0.75`, exposed in the harness as **Degraded scale**, range `0.4`–`1.0`). Since GPU fill rate scales with pixel count, this is a direct performance lever:
+
+| Scale | Pixel reduction |
+|---|---|
+| `1.0` | none (native resolution) |
+| `0.75` | ~44% fewer pixels |
+| `0.5` | 75% fewer pixels |
+
+Lower values trade visual sharpness for frame rate — useful on weak integrated GPUs where shrinking the browser window is observed to help, since that's effectively the same fill-rate relief applied manually.
 
 ### Auto-detection
 
@@ -164,21 +174,24 @@ The harness applies a rendering optimisation that temporarily caps `window.devic
 | AMD Radeon | off — full DPR |
 | Intel Arc (discrete) | off — full DPR |
 | Apple M-series | off — full DPR |
-| Intel integrated, Mali, Adreno, PowerVR | on — DPR capped at 1 |
-| Unknown / renderer info unavailable | on — DPR capped at 1 |
-| Any GPU on a non-Retina screen (DPR ≤ 1) | off — nothing to cap |
+| Intel integrated, Mali, Adreno, PowerVR | on — scale applied |
+| Unknown / renderer info unavailable | on — scale applied |
+| Any GPU, scale ≥ native DPR | off — nothing to reduce |
 
-### URL parameter
+### URL parameters
 
-The `degradedGPU` URL parameter overrides auto-detection and is useful for sharing test links or for a native wrapper that already knows the device tier:
+Two URL parameters override the defaults — useful for sharing test links or for a native wrapper that already knows the device tier:
 
 ```
-?degradedGPU=1      → force on
-?degradedGPU=false  → force off
-?degradedGPU=0      → force off
+?degradedGPU=1      → force render scale on
+?degradedGPU=false  → force render scale off
+?degradedGPU=0      → force render scale off
+?renderScale=0.6    → set the degraded scale to 0.6
 ```
 
-The harness **Degraded GPU** toggle in the Settings folder provides the same override at runtime without reloading.
+The harness **Degraded GPU** toggle and **Degraded scale** slider in the Settings folder provide the same overrides at runtime without reloading.
+
+The **Copy GPU link** button (also in Settings) copies the current page URL to the clipboard with both params baked in, reflecting whatever the toggle and slider are currently set to — useful for sending a tester a link that reproduces a specific GPU preset exactly.
 
 ---
 

@@ -145,10 +145,21 @@ let degradedGPU = detectDegradedGPU();
 const _gpuParam = new URLSearchParams(window.location.search).get("degradedGPU");
 if (_gpuParam !== null) degradedGPU = _gpuParam !== "0" && _gpuParam !== "false";
 
-// Caps devicePixelRatio at 1 for fill-rate-limited GPUs before calling resize —
-// reduces rendered pixels by up to 4× on high-DPI screens (e.g. Intel UHD, Mali).
+// Fraction of native resolution to render at when degradedGPU is active.
+// 1.0 = native, 0.75 = ~44% fewer pixels, 0.5 = 75% fewer. Fill rate scales
+// with pixel count, so this is a direct performance lever on weak GPUs.
+let degradedScale = 0.75;
+
+// URL param overrides the default: ?renderScale=0.6
+const _scaleParam = parseFloat(new URLSearchParams(window.location.search).get("renderScale"));
+if (!Number.isNaN(_scaleParam)) degradedScale = _scaleParam;
+
+// Caps the effective devicePixelRatio at degradedScale for fill-rate-limited GPUs
+// before calling resize. CSS size is untouched — the browser upscales the smaller
+// drawing buffer to fill the canvas, same as scaling a video to fit its element.
 function resizeDrawingSurface(rInst) {
-  if (!degradedGPU || window.devicePixelRatio <= 1) {
+  const targetDPR = Math.min(window.devicePixelRatio, degradedScale);
+  if (!degradedGPU || targetDPR >= window.devicePixelRatio) {
     rInst.resizeDrawingSurfaceToCanvas();
     return;
   }
@@ -158,7 +169,7 @@ function resizeDrawingSurface(rInst) {
     return;
   }
   try {
-    Object.defineProperty(window, "devicePixelRatio", { value: 1, configurable: true });
+    Object.defineProperty(window, "devicePixelRatio", { value: targetDPR, configurable: true });
     rInst.resizeDrawingSurfaceToCanvas();
   } finally {
     Object.defineProperty(window, "devicePixelRatio", prev);
@@ -437,6 +448,7 @@ guiState.autoComplete    = autoCompleteLoading;
 guiState.nativeMobile    = false;
 guiState.degraded        = false;
 guiState.degradedGPU     = degradedGPU;
+guiState.degradedScale   = degradedScale;
 guiState.onboarding      = true;
 
 const gui = new lil.GUI({ title: "REX Settings" });
@@ -524,10 +536,30 @@ setFolder.add(guiState, "autoComplete" ).name("Auto complete loading" ).onChange
 setFolder.add(guiState, "nativeMobile" ).name("Native Mobile"         ).onChange(v => { if (isNativeMobileProp)   isNativeMobileProp.value   = v; });
 setFolder.add(guiState, "degraded"     ).name("Degraded"              ).onChange(v => { if (isDegradedProp) isDegradedProp.value = v; });
 setFolder.add(guiState, "degradedGPU"  ).name("Degraded GPU"           ).onChange(v => { degradedGPU = v; if (riveReady && r) resizeDrawingSurface(r); });
+setFolder.add(guiState, "degradedScale", 0.4, 1.0, 0.05).name("Degraded scale").onChange(v => { degradedScale = v; if (riveReady && r) resizeDrawingSurface(r); });
+setFolder.add({ fn: copyGpuShareLink }, "fn").name("Copy GPU link");
 setFolder.add(guiState, "onboarding"   ).name("Onboarding Active"     ).onChange(v => {
   localStorage.setItem("onboardingActive", v);
   if (onboardingActiveProp) onboardingActiveProp.value = v;
 });
+
+// ── GPU share link ──────────────────────────────────────────────────────────
+
+// Builds the current page URL with degradedGPU/renderScale baked in as query
+// params, so a specific GPU preset can be shared as a plain link.
+function buildGpuShareLink() {
+  const url = new URL(window.location.href);
+  url.searchParams.set("degradedGPU", degradedGPU ? "1" : "0");
+  url.searchParams.set("renderScale", degradedScale);
+  return url.toString();
+}
+
+function copyGpuShareLink() {
+  const link = buildGpuShareLink();
+  navigator.clipboard.writeText(link)
+    .then(() => showToast("GPU link copied"))
+    .catch(() => showToast(link));
+}
 
 // ── Toasts ────────────────────────────────────────────────────────────────────
 
