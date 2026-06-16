@@ -190,7 +190,7 @@ function resizeDrawingSurface(rInst) {
 function startRive() {
   riveReady = false;
   r = new rive.Rive({
-    src: "rex_test.riv",
+    src: "rex.riv",
     canvas,
     autoplay: false,
     autoBind: true,
