@@ -1,6 +1,11 @@
 const canvas     = document.getElementById("rive-canvas");
 const canvasWrap = document.getElementById("canvas-wrap");
 
+// Which Rive runtime script index.html loaded — mirrors the same lookup the
+// inline bootstrap script in index.html uses, so the harness dropdown shows
+// the runtime actually active on this page load, not just the last choice.
+const riveRuntime = localStorage.getItem("riveRuntime") || "webgl2";
+
 // ── Image data ────────────────────────────────────────────────────────────────
 
 // Sprite format variants — maps display label to subfolder and file extension.
@@ -455,6 +460,7 @@ guiState.nativeMobile    = false;
 guiState.degraded        = false;
 guiState.degradedGPU     = degradedGPU;
 guiState.degradedScale   = degradedScale;
+guiState.riveRuntime     = riveRuntime;
 guiState.onboarding      = true;
 
 const gui = new lil.GUI({ title: "REX Settings" });
@@ -536,6 +542,10 @@ trgFolder.add({ fn: () => fullReset()                                           
 // Settings
 const setFolder = gui.addFolder("Settings");
 setFolder.add(guiState, "spriteFormat", Object.keys(SPRITE_FORMATS)).name("Sprite format").onChange(v => { spriteFormat = v; reloadSprites(); });
+setFolder.add(guiState, "riveRuntime", { "WebGL2": "webgl2", "Canvas": "canvas" }).name("Runtime").onChange(v => {
+  localStorage.setItem("riveRuntime", v);
+  location.reload();
+});
 setFolder.add(guiState, "randomPack"   ).name("Random Pack"           ).onChange(v => { randomPackMode    = v; });
 setFolder.add(guiState, "audio"        ).name("Audio"                 ).onChange(v => { if (r) r.volume = v ? 1 : 0; });
 setFolder.add(guiState, "autoComplete" ).name("Auto complete loading" ).onChange(v => { autoCompleteLoading = v; });

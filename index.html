@@ -27,7 +27,17 @@
   <input type="file" id="card-file-input"   accept="image/*" hidden />
 
   <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.20"></script>
-  <script src="https://unpkg.com/@rive-app/webgl2@latest"></script>
+  <script>
+    // Runtime choice requires a different JS/WASM bundle entirely, so it's
+    // selected before any other script loads, persisted in localStorage by
+    // the harness "Runtime" dropdown (reloads the page on change).
+    (function () {
+      var params  = new URLSearchParams(window.location.search);
+      var runtime = params.get("runtime") || localStorage.getItem("riveRuntime") || "webgl2";
+      if (runtime !== "webgl2" && runtime !== "canvas") runtime = "webgl2";
+      document.write('<script src="https://unpkg.com/@rive-app/' + runtime + '@latest"><\/script>');
+    })();
+  </script>
   <script src="main.js"></script>
 </body>
 </html>

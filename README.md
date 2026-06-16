@@ -25,7 +25,7 @@ The harness panel appears in the top-right corner of the screen. It starts colla
 | **Images** | Pack and Card dropdowns to swap live textures |
 | **Config** | Starting section, current section display, rarity, pack count |
 | **Triggers** | Loading complete, Shake hero pack, Shake side packs, Restart |
-| **Settings** | Sprite format, Random Pack, Audio, Auto complete loading, Native Mobile, Degraded, Degraded GPU, Degraded scale, Copy GPU link, Onboarding Active |
+| **Settings** | Runtime, Sprite format, Random Pack, Audio, Auto complete loading, Native Mobile, Degraded, Degraded GPU, Degraded scale, Copy GPU link, Onboarding Active |
 
 Pack and card images can also be swapped programmatically by triggering the hidden file inputs `#pack-file-input`, `#sprite-file-input`, and `#card-file-input` in the DOM.
 
@@ -195,6 +195,23 @@ Two URL parameters override the defaults — useful for sharing test links or fo
 The harness **Degraded GPU** toggle and **Degraded scale** slider in the Settings folder provide the same overrides at runtime without reloading.
 
 The **Copy GPU link** button (also in Settings) copies the current page URL to the clipboard with both params baked in, reflecting whatever the toggle and slider are currently set to — useful for sending a tester a link that reproduces a specific GPU preset exactly.
+
+---
+
+## Rive runtime
+
+The harness can switch between Rive's two web runtimes — **WebGL2** (default) and **Canvas** — to compare their performance on a given device. Unlike the other Settings toggles, this isn't a live property: each runtime is a separate JS/WASM bundle, so switching requires a full page reload.
+
+The choice is persisted in `localStorage` under `riveRuntime` and read by an inline bootstrap script in `index.html`, which runs before any other script and writes the matching `<script>` tag (`@rive-app/webgl2` or `@rive-app/canvas`) into the page. The harness **Runtime** dropdown (Settings folder) updates that stored value and calls `location.reload()` immediately.
+
+A `?runtime=` URL parameter overrides the stored value, useful for sharing a test link pinned to a specific runtime:
+
+```
+?runtime=webgl2
+?runtime=canvas
+```
+
+The rest of `main.js` is runtime-agnostic — both packages expose the same `rive.Rive` constructor and ViewModel API, so no other code needs to change when switching.
 
 ---
 
