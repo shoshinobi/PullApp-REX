@@ -1,4 +1,5 @@
-const canvas = document.getElementById("rive-canvas");
+const canvas     = document.getElementById("rive-canvas");
+const canvasWrap = document.getElementById("canvas-wrap");
 
 // ── Image data ────────────────────────────────────────────────────────────────
 
@@ -120,9 +121,9 @@ let idleTimer      = null;
 
 // Returns false only for proven high-performance GPUs; everything else (integrated,
 // mobile, or undetectable) defaults to true — safe for older / budget hardware.
-// Only relevant on high-DPR screens — at DPR ≤ 1 there's nothing to cap.
+// Applies regardless of devicePixelRatio — render scale below helps standard
+// (non-Retina) displays just as much as high-DPI ones.
 function detectDegradedGPU() {
-  if (window.devicePixelRatio <= 1) return false;
   try {
     const gl = document.createElement("canvas").getContext("webgl2")
             || document.createElement("canvas").getContext("webgl");
@@ -135,7 +136,7 @@ function detectDegradedGPU() {
       }
     }
   } catch (_) {}
-  // Unknown or integrated GPU on a high-DPR screen — cap by default
+  // Unknown or integrated GPU — apply render scale by default
   return true;
 }
 
@@ -154,26 +155,24 @@ let degradedScale = 0.75;
 const _scaleParam = parseFloat(new URLSearchParams(window.location.search).get("renderScale"));
 if (!Number.isNaN(_scaleParam)) degradedScale = _scaleParam;
 
-// Caps the effective devicePixelRatio at degradedScale for fill-rate-limited GPUs
-// before calling resize. CSS size is untouched — the browser upscales the smaller
-// drawing buffer to fill the canvas, same as scaling a video to fit its element.
+// Shrinks the canvas's own CSS box to degradedScale and applies a counter
+// transform to stretch it back to fill its container visually. Rive then sees
+// a perfectly ordinary resize to a smaller box — the same code path as any
+// normal window resize — so its Fit: Layout recalculation is unaffected.
+// (Earlier versions patched window.devicePixelRatio instead, which interfered
+// with Rive's layout recalculation on resize — this avoids touching it at all.)
 function resizeDrawingSurface(rInst) {
-  const targetDPR = Math.min(window.devicePixelRatio, degradedScale);
-  if (!degradedGPU || targetDPR >= window.devicePixelRatio) {
-    rInst.resizeDrawingSurfaceToCanvas();
-    return;
+  const scale = degradedGPU ? degradedScale : 1;
+  if (scale < 1) {
+    canvas.style.width     = `${scale * 100}%`;
+    canvas.style.height    = `${scale * 100}%`;
+    canvas.style.transform = `scale(${1 / scale})`;
+  } else {
+    canvas.style.width     = "";
+    canvas.style.height    = "";
+    canvas.style.transform = "";
   }
-  const prev = Object.getOwnPropertyDescriptor(window, "devicePixelRatio");
-  if (!prev?.configurable) {
-    rInst.resizeDrawingSurfaceToCanvas();
-    return;
-  }
-  try {
-    Object.defineProperty(window, "devicePixelRatio", { value: targetDPR, configurable: true });
-    rInst.resizeDrawingSurfaceToCanvas();
-  } finally {
-    Object.defineProperty(window, "devicePixelRatio", prev);
-  }
+  rInst.resizeDrawingSurfaceToCanvas();
 }
 
 function startRive() {
@@ -312,7 +311,9 @@ function startRive() {
 
 startRive();
 
-new ResizeObserver(() => { if (riveReady && r) resizeDrawingSurface(r); }).observe(canvas);
+// Observes canvasWrap, not canvas — resizeDrawingSurface mutates the canvas's own
+// size/transform, so observing canvas itself would create a feedback loop.
+new ResizeObserver(() => { if (riveReady && r) resizeDrawingSurface(r); }).observe(canvasWrap);
 
 // WebGL context can be reclaimed by the OS under memory pressure (Android, iOS,
 // low-memory Windows). Recover cleanly instead of leaving a black canvas.

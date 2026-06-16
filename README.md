@@ -148,11 +148,13 @@ The following boolean properties on `MainVM` should be set before `r.play()` so 
 
 ## GPU performance
 
-On high-DPI screens (devicePixelRatio > 1), Rive's WebGL renderer draws up to 4× more pixels per frame than the CSS canvas size suggests. On fill-rate-limited GPUs — Intel integrated graphics, ARM Mali, older Adreno — this is the primary cause of jitter and dropped frames.
+WebGL fill rate — how many pixels the GPU can shade per frame — is the primary bottleneck on weak/integrated GPUs (Intel integrated graphics, ARM Mali, older Adreno). Shrinking the rendered resolution is a direct lever on this, independent of screen DPI.
 
 ### Render scale
 
-The harness applies a rendering optimisation that temporarily overrides `window.devicePixelRatio` before calling `resizeDrawingSurfaceToCanvas()`, shrinking the WebGL drawing buffer below its native resolution. The canvas's CSS size is untouched — it still fills the layout exactly as before — the browser simply upscales the smaller buffer to fit, the same way a lower-resolution video is stretched to fill its player. This is independent of `isDegraded` — visual content inside the Rive file is unaffected; only the render resolution changes.
+The harness shrinks the canvas's own CSS box to a fraction of its container size, then applies a counter `transform: scale()` to stretch it back to fill the layout visually — the same technique as upscaling a lower-resolution video to fill its player. Rive then performs an entirely ordinary `resizeDrawingSurfaceToCanvas()` call against that smaller box: the same code path as any normal window resize, so its Fit: Layout recalculation behaves exactly as expected. This is independent of `isDegraded` — visual content inside the Rive file is unaffected; only the render resolution changes.
+
+(An earlier version of this feature worked by temporarily overriding `window.devicePixelRatio` before calling resize. That interfered with Rive's layout recalculation on resize and was replaced with the CSS-transform approach above.)
 
 The amount of reduction is controlled by `degradedScale` (default `0.75`, exposed in the harness as **Degraded scale**, range `0.4`–`1.0`). Since GPU fill rate scales with pixel count, this is a direct performance lever:
 
@@ -166,17 +168,16 @@ Lower values trade visual sharpness for frame rate — useful on weak integrated
 
 ### Auto-detection
 
-`detectDegradedGPU()` runs at startup and sets the initial state. It defaults to **on** for any GPU that cannot be identified as high-performance, making it safe for older and budget devices out of the box:
+`detectDegradedGPU()` runs at startup and sets the initial state. It defaults to **on** for any GPU that cannot be identified as high-performance, making it safe for older and budget devices out of the box — regardless of screen DPI, since render scale helps standard displays just as much as high-DPI ones:
 
 | GPU family | Result |
 |---|---|
-| NVIDIA GeForce / Quadro | off — full DPR |
-| AMD Radeon | off — full DPR |
-| Intel Arc (discrete) | off — full DPR |
-| Apple M-series | off — full DPR |
+| NVIDIA GeForce / Quadro | off — full resolution |
+| AMD Radeon | off — full resolution |
+| Intel Arc (discrete) | off — full resolution |
+| Apple M-series | off — full resolution |
 | Intel integrated, Mali, Adreno, PowerVR | on — scale applied |
 | Unknown / renderer info unavailable | on — scale applied |
-| Any GPU, scale ≥ native DPR | off — nothing to reduce |
 
 ### URL parameters
 
