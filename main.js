@@ -74,6 +74,7 @@ let shakeSide2Trigger   = null;
 let shakeSide4Trigger   = null;
 let shakeSide5Trigger   = null;
 let skipTrigger         = null;
+let btnSkipClickTrigger = null;
 let cardDropTrigger     = null;
 let packImageProp        = null;
 let cardImageProp        = null;
@@ -216,6 +217,7 @@ function startRive() {
 
       loadCompleteTrigger = vmi.trigger("loadComplete");
       skipTrigger         = vmi.trigger("skip");
+      btnSkipClickTrigger = vmi.viewModel("btnSkip").trigger("isClicked");
       cardDropTrigger     = vmi.trigger("cardDrop");
       shakeHeroTrigger    = vmi.viewModel("heroPack").trigger("shake");
       shakeSide1Trigger   = vmi.viewModel("pack1").trigger("shake");
@@ -502,7 +504,6 @@ guiState.riveRuntime     = riveRuntime;
 guiState.onboarding      = true;
 
 const gui = new lil.GUI({ title: "REX Settings" });
-gui.close();
 gui.hide();
 
 // Images
@@ -572,7 +573,7 @@ packCountCtrl = cfgFolder.add(guiState, "packCount", 0, 99, 1).name("Pack count"
 // Triggers
 const trgFolder = gui.addFolder("Triggers");
 trgFolder.add({ fn: () => loadCompleteTrigger?.trigger()                            }, "fn").name("Loading complete");
-trgFolder.add({ fn: () => { console.log("[REX trigger] skip"); skipTrigger?.trigger(); }     }, "fn").name("Skip");
+trgFolder.add({ fn: () => { console.log("[REX trigger] skip"); btnSkipClickTrigger?.trigger(); skipTrigger?.trigger(); } }, "fn").name("Skip");
 trgFolder.add({ fn: () => { console.log("[REX trigger] cardDrop"); cardDropTrigger?.trigger(); } }, "fn").name("Card Drop");
 trgFolder.add({ fn: () => shakeHeroTrigger?.trigger()                               }, "fn").name("Shake hero pack");
 trgFolder.add({ fn: () => { shakeSide1Trigger?.trigger(); shakeSide2Trigger?.trigger();

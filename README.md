@@ -119,21 +119,24 @@ The harness **Card** dropdown in the Images folder pre-loads several card images
 
 ### Skip
 
-The `skip` trigger on `MainVM` bypasses the rip interaction and jumps directly to the card reveal. Store the reference at load time rather than calling `vmi.trigger()` on every click:
+The `skip` trigger on `MainVM` bypasses the rip interaction and jumps directly to the card reveal. `SFX_skip` is a Rive `AudioEvent` — it is fired automatically by the state machine on the relevant transition and cannot be called from JS. To ensure it plays, fire `btnSkip.isClicked` alongside the `skip` trigger so the state machine takes the same path as the in-scene button (which is where the audio event is attached):
 
 ```js
-let skipTrigger = null;
+let skipTrigger         = null;
+let btnSkipClickTrigger = null;
 
 // inside onLoad:
-skipTrigger = vmi.trigger("skip");
+skipTrigger         = vmi.trigger("skip");
+btnSkipClickTrigger = vmi.viewModel("btnSkip").trigger("isClicked");
 
 // HTML button outside the canvas:
 document.getElementById("skip-btn").addEventListener("click", () => {
+  btnSkipClickTrigger?.trigger();
   skipTrigger?.trigger();
 });
 ```
 
-The trigger reference is only valid after `onLoad` fires. The optional chain (`?.`) guards against the button being clicked before Rive is ready or if the property name changes in the file.
+Store both references at load time. The optional chains guard against the button being pressed before Rive is ready. Fire `btnSkip.isClicked` first so the audio event dispatches before the state machine transitions on `skip`.
 
 ### nextPack flow
 
