@@ -117,6 +117,24 @@ The harness **Card** dropdown in the Images folder pre-loads several card images
 
 `packCount` on `MainVM` is an integer tracking how many packs remain in the session. The harness **Pack count** input in the Config folder sets the value directly; the default is `3`. Each `nextPack` event automatically decrements it by one (minimum 0) and the value carries over across restarts.
 
+### Skip
+
+The `skip` trigger on `MainVM` bypasses the rip interaction and jumps directly to the card reveal. Store the reference at load time rather than calling `vmi.trigger()` on every click:
+
+```js
+let skipTrigger = null;
+
+// inside onLoad:
+skipTrigger = vmi.trigger("skip");
+
+// HTML button outside the canvas:
+document.getElementById("skip-btn").addEventListener("click", () => {
+  skipTrigger?.trigger();
+});
+```
+
+The trigger reference is only valid after `onLoad` fires. The optional chain (`?.`) guards against the button being clicked before Rive is ready or if the property name changes in the file.
+
 ### nextPack flow
 
 When Rive fires the `nextPack` trigger on `MainVM`, the harness:
@@ -125,6 +143,28 @@ When Rive fires the `nextPack` trigger on `MainVM`, the harness:
 2. Decrements `packCount` by one.
 3. Picks a new random pack, sprite, card, and rarity (if **Random Pack** is enabled).
 4. Restarts the Rive instance so the new pack-opening sequence begins.
+
+**In-scene button behaviour**
+
+The Rive UI button that appears after the reveal automatically changes label based on `packCount`:
+
+- `packCount > 1` — button shows **Next Pack** and fires the `nextPack` trigger
+- `packCount <= 1` — button shows **View in Collection** and fires the `viewInCollection` trigger
+
+The button only appears at all when `uiVisible` is `true`. If the host app is providing its own native controls, set `uiVisible` to `false` and replicate this logic yourself.
+
+**What happens next is up to the host app.** Rive fires `nextPack` as a signal — it does not restart itself. The host is responsible for deciding what that means in context: loading a new pack, navigating to another screen, or calling back into the Rive harness to restart the sequence. The harness in this repo handles it by decrementing `packCount`, picking new random values, and calling `r.cleanup()` + `startRive()`.
+
+**Protections to wire up in the host app:**
+
+- **Pack count guard** — only fire `nextPack` when `packCount > 1`. Firing it at 1 would decrement to 0 and start a new sequence with no packs remaining. Check the live value from the VM before triggering:
+
+```js
+if (packCountProp.value <= 1) return;
+nextPackTrigger.trigger();
+```
+
+- **One-shot guard** — the `nextPack` listener uses a `nextPackFired` boolean that is reset to `false` on every Rive init and set to `true` the moment the trigger is processed. This prevents double-fires if Rive emits the event more than once before the restart completes. Any host-app implementation should apply the same pattern.
 
 ### Vault Collection
 
@@ -143,6 +183,7 @@ The following boolean properties on `MainVM` should be set before `r.play()` so 
 | `isNativeMobile` | `false` | Set to `true` when running inside a native mobile wrapper (React Native, etc.) to enable mobile-specific layout and interaction paths. |
 | `isDegraded` | `false` | Set to `true` to reduce visual complexity inside the Rive file — disables particle systems and other heavy effects. Independent of GPU rendering quality. |
 | `onboardingActive` | `true` | Set to `false` once the user has completed onboarding to skip the onboarding overlay. Persists in `localStorage`. |
+| `uiVisible` | `true` | Set to `false` to hide the in-scene UI buttons (skip, replay, etc.). Use this when the host app provides its own native controls so the Rive-rendered buttons don't duplicate them. |
 
 ---
 

@@ -73,6 +73,8 @@ let shakeSide1Trigger   = null;
 let shakeSide2Trigger   = null;
 let shakeSide4Trigger   = null;
 let shakeSide5Trigger   = null;
+let skipTrigger         = null;
+let cardDropTrigger     = null;
 let packImageProp        = null;
 let cardImageProp        = null;
 let topSpriteImgProp     = null;
@@ -82,6 +84,8 @@ let packCountProp        = null;
 let isNativeMobileProp   = null;
 let isDegradedProp       = null;
 let onboardingActiveProp = null;
+let uiVisibleProp        = null;
+let nextPackTrigger      = null;
 
 // ── Session state — persists across restarts ──────────────────────────────────
 
@@ -123,6 +127,7 @@ let r = null;
 let riveReady      = false;
 let currentSection = null;
 let idleTimer      = null;
+let _introspected  = false;
 
 // Returns false only for proven high-performance GPUs; everything else (integrated,
 // mobile, or undetectable) defaults to true — safe for older / budget hardware.
@@ -200,6 +205,7 @@ function startRive() {
     onLoad() {
       riveReady = true;
       resizeDrawingSurface(r);
+      if (!_introspected) { _introspected = true; logRiveIntrospection(r); }
 
       const vmi = r.viewModelInstance;
 
@@ -209,6 +215,8 @@ function startRive() {
       guiState.currentSection = startSection;
 
       loadCompleteTrigger = vmi.trigger("loadComplete");
+      skipTrigger         = vmi.trigger("skip");
+      cardDropTrigger     = vmi.trigger("cardDrop");
       shakeHeroTrigger    = vmi.viewModel("heroPack").trigger("shake");
       shakeSide1Trigger   = vmi.viewModel("pack1").trigger("shake");
       shakeSide2Trigger   = vmi.viewModel("pack2").trigger("shake");
@@ -258,6 +266,9 @@ function startRive() {
       isDegradedProp       = vmi.boolean("isDegraded");
       isDegradedProp.value = guiState.degraded;
 
+      uiVisibleProp        = vmi.boolean("uiVisible");
+      if (uiVisibleProp) uiVisibleProp.value = guiState.uiVisible;
+
       const onboardingStored = localStorage.getItem("onboardingActive");
       const onboardingOn     = onboardingStored === null ? true : onboardingStored === "true";
       onboardingActiveProp       = vmi.boolean("onboardingActive");
@@ -287,7 +298,8 @@ function startRive() {
 
       nextPackFired = false;
 
-      vmi.trigger("nextPack").on(() => {
+      nextPackTrigger = vmi.trigger("nextPack");
+      nextPackTrigger?.on(() => {
         if (nextPackFired) return;
         nextPackFired = true;
         showToast("nextPack fired");
@@ -339,6 +351,31 @@ canvas.addEventListener("webglcontextlost", (e) => {
 canvas.addEventListener("webglcontextrestored", () => startRive());
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function logRiveIntrospection(rInst) {
+  console.groupCollapsed("[REX] Rive introspection");
+
+  const smNames = rInst.stateMachineNames ?? [];
+  for (const smName of smNames) {
+    const inputs = rInst.stateMachineInputs(smName) ?? [];
+    console.groupCollapsed(`SM: ${smName} (${inputs.length} inputs)`);
+    for (const inp of inputs) {
+      const kind = typeof inp.fire === "function" ? "trigger"
+                 : typeof inp.value === "boolean"  ? "boolean"
+                 : "number";
+      console.log(`  [${kind}] ${inp.name}`);
+    }
+    console.groupEnd();
+  }
+
+  console.log("Listening for Rive events… (they will appear below as they fire)");
+  rInst.on(rive.EventType.RiveEvent, (e) => {
+    const d = e.data;
+    console.log(`[REX event] "${d?.name ?? d?.type ?? "?"}"`, d);
+  });
+
+  console.groupEnd();
+}
 
 function reloadSprites() {
   if (!r || !riveReady) return;
@@ -458,6 +495,7 @@ guiState.audio           = true;
 guiState.autoComplete    = autoCompleteLoading;
 guiState.nativeMobile    = false;
 guiState.degraded        = false;
+guiState.uiVisible       = true;
 guiState.degradedGPU     = degradedGPU;
 guiState.degradedScale   = degradedScale;
 guiState.riveRuntime     = riveRuntime;
@@ -465,6 +503,7 @@ guiState.onboarding      = true;
 
 const gui = new lil.GUI({ title: "REX Settings" });
 gui.close();
+gui.hide();
 
 // Images
 const imgFolder = gui.addFolder("Images");
@@ -533,10 +572,17 @@ packCountCtrl = cfgFolder.add(guiState, "packCount", 0, 99, 1).name("Pack count"
 // Triggers
 const trgFolder = gui.addFolder("Triggers");
 trgFolder.add({ fn: () => loadCompleteTrigger?.trigger()                            }, "fn").name("Loading complete");
+trgFolder.add({ fn: () => { console.log("[REX trigger] skip"); skipTrigger?.trigger(); }     }, "fn").name("Skip");
+trgFolder.add({ fn: () => { console.log("[REX trigger] cardDrop"); cardDropTrigger?.trigger(); } }, "fn").name("Card Drop");
 trgFolder.add({ fn: () => shakeHeroTrigger?.trigger()                               }, "fn").name("Shake hero pack");
 trgFolder.add({ fn: () => { shakeSide1Trigger?.trigger(); shakeSide2Trigger?.trigger();
                              shakeSide4Trigger?.trigger(); shakeSide5Trigger?.trigger(); }
               }, "fn").name("Shake side packs");
+trgFolder.add({ fn: () => {
+  if ((packCountProp?.value ?? guiState.packCount) <= 1) return;
+  console.log("[REX trigger] nextPack");
+  nextPackTrigger?.trigger();
+} }, "fn").name("Next Pack");
 trgFolder.add({ fn: () => fullReset()                                               }, "fn").name("Restart");
 
 // Settings
@@ -550,7 +596,8 @@ setFolder.add(guiState, "randomPack"   ).name("Random Pack"           ).onChange
 setFolder.add(guiState, "audio"        ).name("Audio"                 ).onChange(v => { if (r) r.volume = v ? 1 : 0; });
 setFolder.add(guiState, "autoComplete" ).name("Auto complete loading" ).onChange(v => { autoCompleteLoading = v; });
 setFolder.add(guiState, "nativeMobile" ).name("Native Mobile"         ).onChange(v => { if (isNativeMobileProp)   isNativeMobileProp.value   = v; });
-setFolder.add(guiState, "degraded"     ).name("Degraded"              ).onChange(v => { if (isDegradedProp) isDegradedProp.value = v; });
+setFolder.add(guiState, "degraded"     ).name("Degraded"              ).onChange(v => { if (isDegradedProp)  isDegradedProp.value  = v; });
+setFolder.add(guiState, "uiVisible"    ).name("UI Visible"             ).onChange(v => { if (uiVisibleProp)   uiVisibleProp.value   = v; });
 setFolder.add(guiState, "degradedGPU"  ).name("Degraded GPU"           ).onChange(v => { degradedGPU = v; if (riveReady && r) resizeDrawingSurface(r); });
 setFolder.add(guiState, "degradedScale", 0.4, 1.0, 0.05).name("Degraded scale").onChange(v => { degradedScale = v; if (riveReady && r) resizeDrawingSurface(r); });
 setFolder.add({ fn: copyGpuShareLink }, "fn").name("Copy GPU link");
@@ -576,6 +623,12 @@ function copyGpuShareLink() {
     .then(() => showToast("GPU link copied"))
     .catch(() => showToast(link));
 }
+
+// ── Harness keyboard shortcut ─────────────────────────────────────────────────
+
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey && e.shiftKey && e.key === "O") gui.show(gui._hidden);
+});
 
 // ── Toasts ────────────────────────────────────────────────────────────────────
 
