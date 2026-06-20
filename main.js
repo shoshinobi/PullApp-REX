@@ -90,18 +90,20 @@ let nextPackTrigger      = null;
 
 // ── Session state — persists across restarts ──────────────────────────────────
 
-let randomPackMode = true;
+let randomPackMode = false;
+
+const _initPack = PACK_IMAGES.find(p => p.label === "PackGraphics_goldGreen");
 
 let carriedPackCount   = 3;
-let carriedPackImage   = null;
-let carriedSpriteImage = null;
-let carriedRarity      = null;
-let carriedCardImage   = null;
+let carriedPackImage   = _initPack.path;
+let carriedSpriteImage = _initPack.sprite;
+let carriedCardImage   = randomCard();
+let carriedRarity      = randomRarity();
 let autoCompleteLoading = true;
 
-let activeCardLabel = null;
-let activeCardSrc   = null;
-let activePackLabel = null;
+let activeCardLabel = carriedCardImage.label;
+let activeCardSrc   = carriedCardImage.path;
+let activePackLabel = _initPack.label;
 let cardHistory      = [];
 let collectionViewed = false;
 let nextPackFired    = false;
@@ -114,8 +116,6 @@ function applyRandomValues() {
   carriedCardImage   = randomCard();
   carriedRarity      = randomRarity();
 }
-
-if (randomPackMode) applyRandomValues();
 
 // ── GUI state — shared between lil-GUI and Rive callbacks ─────────────────────
 
@@ -317,6 +317,7 @@ function startRive() {
         guiState.packCount = next;
         packCountCtrl?.updateDisplay();
         if (randomPackMode) applyRandomValues();
+        else { carriedCardImage = randomCard(); carriedRarity = randomRarity(); }
         restart();
       });
 
@@ -434,6 +435,7 @@ function fullReset() {
   cardHistory      = [];
   collectionViewed = false;
   if (randomPackMode) applyRandomValues();
+  else { carriedCardImage = randomCard(); carriedRarity = randomRarity(); }
   restart();
 }
 
@@ -516,6 +518,7 @@ guiState.rarity          = carriedRarity ?? "common";
 guiState.packCount       = carriedPackCount;
 guiState.randomPack      = randomPackMode;
 guiState.audio           = true;
+guiState.toasts          = false;
 guiState.autoComplete    = autoCompleteLoading;
 guiState.nativeMobile    = false;
 guiState.degraded        = false;
@@ -617,6 +620,7 @@ setFolder.add(guiState, "riveRuntime", { "WebGL2": "webgl2", "Canvas": "canvas" 
 });
 setFolder.add(guiState, "randomPack"   ).name("Random Pack"           ).onChange(v => { randomPackMode    = v; });
 setFolder.add(guiState, "audio"        ).name("Audio"                 ).onChange(v => { if (r) r.volume = v ? 1 : 0; if (!v) { buildSFXAudio.pause(); buildSFXAudio.currentTime = 0; } });
+setFolder.add(guiState, "toasts"       ).name("Event toasts"          ).onChange(v => { document.getElementById("toast-container").style.visibility = v ? "visible" : "hidden"; });
 setFolder.add(guiState, "autoComplete" ).name("Auto complete loading" ).onChange(v => { autoCompleteLoading = v; });
 setFolder.add(guiState, "nativeMobile" ).name("Native Mobile"         ).onChange(v => { if (isNativeMobileProp)   isNativeMobileProp.value   = v; });
 setFolder.add(guiState, "degraded"     ).name("Degraded"              ).onChange(v => { if (isDegradedProp)  isDegradedProp.value  = v; });
@@ -652,6 +656,8 @@ function copyGpuShareLink() {
 document.addEventListener("keydown", (e) => {
   if (e.ctrlKey && e.shiftKey && e.key === "O") gui.show(gui._hidden);
 });
+
+document.getElementById("toast-container").style.visibility = "hidden";
 
 // ── Toasts ────────────────────────────────────────────────────────────────────
 
