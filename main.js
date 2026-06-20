@@ -130,6 +130,9 @@ let currentSection = null;
 let idleTimer      = null;
 let _introspected  = false;
 
+const buildSFXAudio = new Audio("audio/buildSFX.mp3");
+buildSFXAudio.loop = true;
+
 // Returns false only for proven high-performance GPUs; everything else (integrated,
 // mobile, or undetectable) defaults to true — safe for older / budget hardware.
 // Applies regardless of devicePixelRatio — render scale below helps standard
@@ -215,10 +218,10 @@ function startRive() {
       vmi.enum("section").value = startSection;
       guiState.currentSection = startSection;
 
-      loadCompleteTrigger = vmi.trigger("loadComplete");
-      skipTrigger         = vmi.trigger("skip");
+      loadCompleteTrigger      = vmi.trigger("loadComplete");
+      skipTrigger              = vmi.trigger("skip");
       btnSkipClickTrigger = vmi.viewModel("btnSkip").trigger("isClicked");
-      cardDropTrigger     = vmi.trigger("cardDrop");
+      cardDropTrigger          = vmi.trigger("cardDrop");
       shakeHeroTrigger    = vmi.viewModel("heroPack").trigger("shake");
       shakeSide1Trigger   = vmi.viewModel("pack1").trigger("shake");
       shakeSide2Trigger   = vmi.viewModel("pack2").trigger("shake");
@@ -317,6 +320,23 @@ function startRive() {
         restart();
       });
 
+      vmi.trigger("cardHold").on(() => {
+        console.log("[REX event] cardHold fired");
+      });
+
+      vmi.trigger("cardReveal").on(() => {
+        console.log("[REX event] cardReveal fired");
+        buildSFXAudio.pause();
+        buildSFXAudio.currentTime = 0;
+      });
+
+      r.on(rive.EventType.RiveEvent, (e) => {
+        if (e.data?.name === "play_buildSFX" && guiState.audio) {
+          buildSFXAudio.currentTime = 0;
+          buildSFXAudio.play().catch(() => {});
+        }
+      });
+
       vmi.trigger("viewInCollection").on(() => {
         if (!collectionViewed && (activeCardLabel || activeCardSrc)) {
           cardHistory.push({ label: activeCardLabel, src: activeCardSrc, pack: activePackLabel });
@@ -400,6 +420,8 @@ document.addEventListener("pointerdown", () => {
 });
 
 function restart() {
+  buildSFXAudio.pause();
+  buildSFXAudio.currentTime = 0;
   clearTimeout(idleTimer);
   idleTimer = null;
   r.cleanup();
@@ -561,7 +583,7 @@ cfgFolder.add(guiState, "startingSection", { Loading: "loading", Rip: "rip" })
   .onChange(v => localStorage.setItem("startingSection", v));
 
 sectionCtrl = cfgFolder.add(guiState, "currentSection", {
-  Loading: "loading", Carousel: "carousel", Rip: "rip", Cover: "cover", Reveal: "reveal",
+  Loading: "loading", Carousel: "carousel", Rip: "rip", Cover: "cover", Hold: "hold", Reveal: "reveal",
 }).name("Current section").onChange(v => { if (sectionProp) sectionProp.value = v; });
 
 rarityCtrl = cfgFolder.add(guiState, "rarity", rarityOptions).name("Rarity")
@@ -594,7 +616,7 @@ setFolder.add(guiState, "riveRuntime", { "WebGL2": "webgl2", "Canvas": "canvas" 
   location.reload();
 });
 setFolder.add(guiState, "randomPack"   ).name("Random Pack"           ).onChange(v => { randomPackMode    = v; });
-setFolder.add(guiState, "audio"        ).name("Audio"                 ).onChange(v => { if (r) r.volume = v ? 1 : 0; });
+setFolder.add(guiState, "audio"        ).name("Audio"                 ).onChange(v => { if (r) r.volume = v ? 1 : 0; if (!v) { buildSFXAudio.pause(); buildSFXAudio.currentTime = 0; } });
 setFolder.add(guiState, "autoComplete" ).name("Auto complete loading" ).onChange(v => { autoCompleteLoading = v; });
 setFolder.add(guiState, "nativeMobile" ).name("Native Mobile"         ).onChange(v => { if (isNativeMobileProp)   isNativeMobileProp.value   = v; });
 setFolder.add(guiState, "degraded"     ).name("Degraded"              ).onChange(v => { if (isDegradedProp)  isDegradedProp.value  = v; });
