@@ -15,8 +15,11 @@ body {
 #canvas-wrap {
   position: relative;
   width: 100vw;
-  height: 100vh;
+  height: 100vh;       /* fallback for browsers without dvh */
+  height: 100dvh;      /* shrinks dynamically as browser chrome shows/hides */
   overflow: hidden;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 #rive-canvas {

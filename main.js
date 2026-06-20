@@ -175,6 +175,73 @@ if (!Number.isNaN(_scaleParam)) degradedScale = _scaleParam;
 const _nativeDPRDescriptor = Object.getOwnPropertyDescriptor(window, "devicePixelRatio");
 const _nativeDPR = window.devicePixelRatio;
 
+// Runs a WebGL micro-benchmark on a hidden offscreen canvas during the loading
+// screen and updates degradedGPU / degradedScale before loadComplete fires.
+// Uses rAF between frames so Rive's loading animation stays live throughout.
+// Thresholds (avg ms/frame at 256×256 with 128 sin/cos iterations per pixel):
+//   < 8ms  → full quality   (degradedGPU = false, scale = 1.0)
+//   8–20ms → mild degrade   (degradedGPU = true,  scale = 0.85)
+//   > 20ms → keep defaults  (degradedGPU = true,  scale = 0.75)
+function gpuBenchmark() {
+  return new Promise(resolve => {
+    const bc = document.createElement("canvas");
+    bc.width = bc.height = 256;
+    const gl = bc.getContext("webgl2") || bc.getContext("webgl");
+    if (!gl) { resolve(); return; }
+
+    const loseCtx = gl.getExtension("WEBGL_lose_context");
+
+    function mkShader(type, src) {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      return s;
+    }
+    const prog = gl.createProgram();
+    gl.attachShader(prog, mkShader(gl.VERTEX_SHADER,
+      `attribute vec2 p;void main(){gl_Position=vec4(p,0,1);}`));
+    gl.attachShader(prog, mkShader(gl.FRAGMENT_SHADER,
+      `precision highp float;
+       void main(){
+         vec2 uv=gl_FragCoord.xy/256.;
+         float c=0.;
+         for(int i=0;i<128;i++)c+=sin(uv.x*float(i))*cos(uv.y*float(i));
+         gl_FragColor=vec4(c*.5+.5,c*.5+.5,c*.5+.5,1.);
+       }`));
+    gl.linkProgram(prog);
+    gl.useProgram(prog);
+
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, "p");
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+    const WARMUP = 3, MEASURE = 6;
+    let phase = 0, count = 0, t0 = 0;
+
+    function tick() {
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      gl.finish();
+
+      if (phase === 0) {
+        if (++count >= WARMUP) { phase = 1; count = 0; t0 = performance.now(); }
+        requestAnimationFrame(tick);
+      } else {
+        if (++count < MEASURE) { requestAnimationFrame(tick); return; }
+        const avg = (performance.now() - t0) / MEASURE;
+        if (avg < 8)       { degradedGPU = false; degradedScale = 1.0; }
+        else if (avg < 20) { degradedGPU = true;  degradedScale = 0.85; }
+        console.log(`[REX bench] ${avg.toFixed(1)}ms/frame → degradedGPU=${degradedGPU} scale=${degradedScale}`);
+        loseCtx?.loseContext();
+        resolve();
+      }
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
 // Caps the effective devicePixelRatio at degradedScale before calling resize.
 // CSS size is untouched — the canvas's own paint-time upscale from a smaller
 // intrinsic resolution to its CSS size is cheap (no extra GPU compositing
@@ -350,7 +417,14 @@ function startRive() {
       r.play("REX");
 
       if (autoCompleteLoading) {
-        Promise.all(imageLoads).then(() => requestAnimationFrame(() => loadCompleteTrigger.trigger()));
+        Promise.all([...imageLoads, gpuBenchmark()]).then(() => {
+          guiState.degradedGPU   = degradedGPU;
+          guiState.degradedScale = degradedScale;
+          degradedGPUCtrl?.updateDisplay();
+          degradedScaleCtrl?.updateDisplay();
+          resizeDrawingSurface(r);
+          requestAnimationFrame(() => loadCompleteTrigger.trigger());
+        });
       }
     },
   });
@@ -625,8 +699,8 @@ setFolder.add(guiState, "autoComplete" ).name("Auto complete loading" ).onChange
 setFolder.add(guiState, "nativeMobile" ).name("Native Mobile"         ).onChange(v => { if (isNativeMobileProp)   isNativeMobileProp.value   = v; });
 setFolder.add(guiState, "degraded"     ).name("Degraded"              ).onChange(v => { if (isDegradedProp)  isDegradedProp.value  = v; });
 setFolder.add(guiState, "uiVisible"    ).name("UI Visible"             ).onChange(v => { if (uiVisibleProp)   uiVisibleProp.value   = v; });
-setFolder.add(guiState, "degradedGPU"  ).name("Degraded GPU"           ).onChange(v => { degradedGPU = v; if (riveReady && r) resizeDrawingSurface(r); });
-setFolder.add(guiState, "degradedScale", 0.4, 1.0, 0.05).name("Degraded scale").onChange(v => { degradedScale = v; if (riveReady && r) resizeDrawingSurface(r); });
+const degradedGPUCtrl   = setFolder.add(guiState, "degradedGPU"  ).name("Degraded GPU"           ).onChange(v => { degradedGPU = v; if (riveReady && r) resizeDrawingSurface(r); });
+const degradedScaleCtrl = setFolder.add(guiState, "degradedScale", 0.4, 1.0, 0.05).name("Degraded scale").onChange(v => { degradedScale = v; if (riveReady && r) resizeDrawingSurface(r); });
 setFolder.add({ fn: copyGpuShareLink }, "fn").name("Copy GPU link");
 setFolder.add(guiState, "onboarding"   ).name("Onboarding Active"     ).onChange(v => {
   localStorage.setItem("onboardingActive", v);
