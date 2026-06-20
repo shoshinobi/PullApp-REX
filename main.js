@@ -135,9 +135,8 @@ let _introspected  = false;
 const buildSFXAudio = new Audio("audio/buildSFX.mp3");
 buildSFXAudio.loop = true;
 
-// Mobile (iOS + Android) always routes through gpuBenchmark() — renderer info
-// alone isn't a reliable proxy for mobile GPU capability or DPR overhead.
-// Desktop browsers with renderer info available are trusted as capable.
+// iOS blocks WEBGL_debug_renderer_info so capability must be inferred via benchmark.
+// Android and desktop return degradedGPU from detectDegradedGPU() directly.
 const _isIOS     = /iphone|ipad|ipod/i.test(navigator.userAgent);
 const _isAndroid = /android/i.test(navigator.userAgent);
 
@@ -152,19 +151,7 @@ function detectDegradedGPU() {
 }
 
 let degradedGPU = detectDegradedGPU();
-
-// URL param overrides auto-detection: ?degradedGPU=1 or ?degradedGPU=false
-const _gpuParam = new URLSearchParams(window.location.search).get("degradedGPU");
-if (_gpuParam !== null) degradedGPU = _gpuParam !== "0" && _gpuParam !== "false";
-
-// Fraction of native resolution to render at when degradedGPU is active.
-// 1.0 = native, 0.75 = ~44% fewer pixels, 0.5 = 75% fewer. Fill rate scales
-// with pixel count, so this is a direct performance lever on weak GPUs.
 let degradedScale = 0.75;
-
-// URL param overrides the default: ?renderScale=0.6
-const _scaleParam = parseFloat(new URLSearchParams(window.location.search).get("renderScale"));
-if (!Number.isNaN(_scaleParam)) degradedScale = _scaleParam;
 
 // Native descriptor + value captured once, before any patching — every call
 // works from this known-good baseline regardless of call order or timing,
@@ -172,16 +159,28 @@ if (!Number.isNaN(_scaleParam)) degradedScale = _scaleParam;
 const _nativeDPRDescriptor = Object.getOwnPropertyDescriptor(window, "devicePixelRatio");
 const _nativeDPR = window.devicePixelRatio;
 
-// Runs a WebGL micro-benchmark on a hidden offscreen canvas during the loading
-// screen and updates degradedGPU / degradedScale before loadComplete fires.
-// Uses rAF between frames so Rive's loading animation stays live throughout.
-// Thresholds (avg ms/frame at 256×256 with 128 sin/cos iterations per pixel):
-//   < 8ms  → full quality   (degradedGPU = false, scale = 1.0)
-//   8–20ms → mild degrade   (degradedGPU = true,  scale = 0.9)
-//   > 20ms → keep defaults  (iOS: 0.75 / Android: 0.9)
+// Desktop Retina displays (DPR ≥ 2) push the pixel buffer to 4× the CSS area,
+// dropping frame rate from 60 to ~20 fps. Capping at 1× CSS restores 60 fps
+// with the same visible quality as a 1080p external monitor.
+if (!_isIOS && !_isAndroid && !degradedGPU && _nativeDPR >= 2) {
+  degradedGPU   = true;
+  degradedScale = 1.0;
+}
+
+// URL params override all auto-detection: ?degradedGPU=1|false, ?renderScale=0.6
+const _gpuParam = new URLSearchParams(window.location.search).get("degradedGPU");
+if (_gpuParam !== null) degradedGPU = _gpuParam !== "0" && _gpuParam !== "false";
+const _scaleParam = parseFloat(new URLSearchParams(window.location.search).get("renderScale"));
+if (!Number.isNaN(_scaleParam)) degradedScale = _scaleParam;
+
+// iOS-only benchmark: renderer info is blocked on iOS, so capability cannot be
+// inferred from GPU name. Runs during loading and updates degradedGPU/degradedScale
+// before loadComplete fires. Thresholds at 256×256 with 128 sin/cos iters/pixel:
+//   < 8ms  → fast iOS (iPhone 15+): degradedGPU = false, scale = 1.0
+//   8–20ms → mid-range iOS:         degradedGPU = true,  scale = 0.9
+//   > 20ms → keep degradedGPU = true, scale = 0.75 (set by detectDegradedGPU)
 function gpuBenchmark() {
-  if (!degradedGPU) return Promise.resolve(); // Desktop: capable GPU detected
-  if (_isAndroid) return Promise.resolve();   // Android: use defaults, no benchmark
+  if (!_isIOS) return Promise.resolve(); // Desktop + Android: use detected defaults
   return new Promise(resolve => {
     const bc = document.createElement("canvas");
     bc.width = bc.height = 256;
