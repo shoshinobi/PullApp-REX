@@ -160,10 +160,7 @@ if (_gpuParam !== null) degradedGPU = _gpuParam !== "0" && _gpuParam !== "false"
 // Fraction of native resolution to render at when degradedGPU is active.
 // 1.0 = native, 0.75 = ~44% fewer pixels, 0.5 = 75% fewer. Fill rate scales
 // with pixel count, so this is a direct performance lever on weak GPUs.
-// Android starts at 0.9 — modern Android GPUs are capable but DPR can be
-// extreme (3–4x on flagships), so a light cap prevents oversized buffers.
-// iOS starts at 0.75 — benchmark will raise this to 0.9 or 1.0 based on results.
-let degradedScale = _isAndroid ? 0.9 : 0.75;
+let degradedScale = 0.75;
 
 // URL param overrides the default: ?renderScale=0.6
 const _scaleParam = parseFloat(new URLSearchParams(window.location.search).get("renderScale"));
@@ -183,8 +180,8 @@ const _nativeDPR = window.devicePixelRatio;
 //   8–20ms → mild degrade   (degradedGPU = true,  scale = 0.9)
 //   > 20ms → keep defaults  (iOS: 0.75 / Android: 0.9)
 function gpuBenchmark() {
-  // Detection already identified a capable GPU — benchmark not needed.
-  if (!degradedGPU) return Promise.resolve();
+  if (!degradedGPU) return Promise.resolve(); // Desktop: capable GPU detected
+  if (_isAndroid) return Promise.resolve();   // Android: use defaults, no benchmark
   return new Promise(resolve => {
     const bc = document.createElement("canvas");
     bc.width = bc.height = 256;
@@ -234,11 +231,8 @@ function gpuBenchmark() {
         if (++count < MEASURE) { requestAnimationFrame(tick); return; }
         const avg = (performance.now() - t0) / MEASURE;
         if (avg < 8) {
-          // iOS fast (iPhone 16+): full native quality, no DPR cap.
-          // Android fast: still cap buffer at 1× CSS — Fit.Layout renders the
-          // artboard at natural pixel scale so a 3× buffer makes content appear
-          // small; 1× keeps the buffer ~= artboard coordinate space.
-          degradedGPU = _isAndroid; degradedScale = 1.0;
+          // Fast iOS device (iPhone 15+): full native quality
+          degradedGPU = false; degradedScale = 1.0;
         } else if (avg < 20) { degradedGPU = true; degradedScale = 0.9; }
         console.log(`[REX bench] ${avg.toFixed(1)}ms/frame → degradedGPU=${degradedGPU} scale=${degradedScale}`);
         loseCtx?.loseContext();
@@ -254,14 +248,7 @@ function gpuBenchmark() {
 // intrinsic resolution to its CSS size is cheap (no extra GPU compositing
 // layer), unlike a CSS transform: scale(), which forces layer promotion and
 // costs just as much fill rate as rendering at full resolution would.
-// Pushes CSS pixel dimensions to Rive's layout system on mobile only.
-// On mobile, the pixel buffer is often 3× the CSS canvas size (high DPR), which
-// causes Fit.Layout to render the artboard at its natural pixel scale within the
-// oversized buffer — content then appears small when the buffer is downscaled to
-// CSS size for display. Giving Rive the CSS dimensions keeps layout at CSS scale.
-// Skipped on desktop where DPR is lower and the desktop layout works correctly.
 function updateCanvasSize() {
-  if (!_isIOS && !_isAndroid) return;
   if (canvasWProp) canvasWProp.value = canvas.clientWidth;
   if (canvasHProp) canvasHProp.value = canvas.clientHeight;
 }
@@ -270,12 +257,12 @@ function resizeDrawingSurface(rInst) {
   const targetDPR = degradedGPU ? Math.min(_nativeDPR, degradedScale) : _nativeDPR;
   if (targetDPR >= _nativeDPR || !_nativeDPRDescriptor?.configurable) {
     rInst.resizeDrawingSurfaceToCanvas();
-    updateCanvasSize();
+    if (_isIOS) updateCanvasSize();
     return;
   }
   Object.defineProperty(window, "devicePixelRatio", { value: targetDPR, configurable: true });
   rInst.resizeDrawingSurfaceToCanvas();
-  updateCanvasSize();
+  if (_isIOS) updateCanvasSize();
   // Restore on the next frame rather than synchronously — Rive's Fit: Layout
   // recalculation may run slightly after this call returns, and should see
   // the same DPR the buffer was just sized with.
@@ -359,9 +346,11 @@ function startRive() {
       isDegradedProp       = vmi.boolean("isDegraded");
       isDegradedProp.value = guiState.degraded;
 
-      canvasWProp = vmi.number("canvasW");
-      canvasHProp = vmi.number("canvasH");
-      updateCanvasSize();
+      if (_isIOS) {
+        canvasWProp = vmi.number("canvasW");
+        canvasHProp = vmi.number("canvasH");
+        updateCanvasSize();
+      }
 
       uiVisibleProp        = vmi.boolean("uiVisible");
       if (uiVisibleProp) uiVisibleProp.value = guiState.uiVisible;
